@@ -1,0 +1,38 @@
+{
+  "name": "workshop_client",
+  "version": "0.0.1",
+  "description": "Generic OSCP client prototype",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "snowpack dev",
+    "build": "snowpack build",
+    "test": "echo \"This template does not include a test runner by default.\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OpenArCloud/workshop_client.git"
+  },
+  "keywords": [
+    "oarc",
+    "oscp",
+    "arcloud"
+  ],
+  "author": "Michael Vogt",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/OpenArCloud/workshop_client/issues"
+  },
+  "homepage": "https://github.com/OpenArCloud/workshop_client#readme",
+  "devDependencies": {
+    "@snowpack/plugin-dotenv": "^2.0.5",
+    "@snowpack/plugin-svelte": "^3.5.2",
+    "snowpack": "^3.0.13",
+    "@snowpack/web-test-runner-plugin": "^0.2.0",
+    "@testing-library/svelte": "^3.0.0",
+    "@web/test-runner": "^0.12.0",
+    "chai": "^4.2.0"
+  },
+  "dependencies": {
+    "svelte": "^3.34.0"
+  }
+}

@@ -1,0 +1,16 @@
+/* Global css styles */
+
+:root {
+  --ui-margin: 20px;
+  --ui-radius: 20px;
+  --ui-shadow: 5px 5px 10px 0 black;
+  --ui-max-width: 400px;
+  --ui-max-height: 600px;
+
+  --button-width: 200px;
+  --button-height: 45px;
+
+  --footer-top-margin: 30px;
+
+  --padding-text: 10px;
+}
