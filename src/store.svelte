@@ -1,0 +1,3 @@
+<!--
+    Store for application state
+-->

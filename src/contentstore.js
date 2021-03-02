@@ -15,14 +15,13 @@ export const intro = `
 `;
 
 export const arAvailable = `
-    <h1>Welcome back</h1>
-    <div>Message, shown when app was used before.</div>
-`
+    <h2>AR is available</h2>
+`;
 
 export const arUnavailable = `
-    <h1>Sorry Dave, I can't do that.</h1>
-`
+    <h2>Sorry Dave, I can't do that.</h2>
+`;
 
 export const overlayOkButton = `
     Let's get started
-`
+`;

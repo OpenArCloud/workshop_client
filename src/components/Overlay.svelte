@@ -15,7 +15,7 @@
     export let content;
 
     // Defines if the footer is displayed
-    export let withFooter = true;
+    export let withOkFooter = true;
 
     // Used to dispatch events to parent
     const dispatch = createEventDispatcher();
@@ -65,14 +65,15 @@
 
 <aside>
     <div id="frame">
-        {@html content}
+        <slot name="content" />
+        <slot name="message" />
 
-        {#if withFooter}
         <footer>
+            {#if withOkFooter}
             <button on:click={() => dispatch('okAction')}>
                 {overlayOkButton}
             </button>
+            {/if}
         </footer>
-        {/if}
     </div>
 </aside>

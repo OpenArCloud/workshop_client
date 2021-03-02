@@ -8,14 +8,22 @@
 -->
 <script>
     import { onMount } from "svelte";
+    import { tick } from 'svelte';
+
+    import Dashboard from '@components/Dashboard.svelte';
     import Overlay from '@components/Overlay.svelte'
     import Viewer from '@components/Viewer.svelte';
-    import { intro } from './contentstore.js';
+
+    import { intro, arAvailable, arUnavailable } from './contentstore.js';
 
 
-    let content;
     let isArAvailable;
+
     let showIntro;
+    let showDashboard;
+    let showAr;
+
+    let dashboard;
     let viewer;
 
 
@@ -26,25 +34,49 @@
         // TODO: Check if AR is available
         isArAvailable = true
 
+        // TODO: Prepare the data and interactions for the dashboard
+        showDashboard = true;
+
         // TODO: Determine if intro was already shown before
         showIntro = true;
-        content = intro;
     })
+
+    /**
+     * Close intro dialog and store that the persistently that the intro was seen.
+     */
+    function closeIntro() {
+        // TODO: Persist that intro was seen
+        showIntro = false;
+
+        if (!showDashboard) {
+            startAr();
+        }
+    }
 
     /**
      * Initiate start of AR session
      */
     function startAr() {
-        showIntro = false;
-
         // TODO: Start initialisation of the viewer
-        viewer.startAr();
+        showDashboard = false;
+        showAr = true;
+
+        tick().then(() => viewer.startAr());
     }
 </script>
 
 
 {#if showIntro}
-    <Overlay content="{content}" withFooter="{isArAvailable}" on:okAction={startAr} />
+    <Overlay withOkFooter="{isArAvailable}" on:okAction={closeIntro}>
+        <div slot="content">{@html intro}</div>
+        <div slot="message">{@html isArAvailable ? arAvailable : arUnavailable}</div>
+    </Overlay>
 {/if}
 
-<Viewer bind:this={viewer}/>
+{#if showDashboard}
+    <Dashboard bind:this={dashboard} on:okClicked={startAr} />
+{/if}
+
+{#if !showDashboard && showAr}
+    <Viewer bind:this={viewer}/>
+{/if}
