@@ -14,31 +14,42 @@
     import Overlay from '@components/Overlay.svelte'
     import Viewer from '@components/Viewer.svelte';
 
-    import { intro, arAvailable, arUnavailable } from './contentstore.js';
+    import StateStore from './stateStore.svelte';
+    import { info, intro, arOkMessage, noArMessage, outro } from './contentstore.js';
 
-
-    let isArAvailable;
 
     let showIntro;
+    let hasIntroSeen;
+    let showOutro;
+
     let showDashboard;
     let showAr;
 
     let dashboard;
     let viewer;
 
+    $: showAr = StateStore.arIsAvailable && !showIntro && !showDashboard;
+
 
     /**
      * Initial setup of the viewer. Called after the component is first rendered to the DOM.
      */
     onMount(() => {
-        // TODO: Check if AR is available
-        isArAvailable = true
+        if (navigator.xr !== undefined || true) {
+            navigator.xr.isSessionSupported("immersive-ar")
+                .then((available) => StateStore.arIsAvailable = available )
+        }
 
-        // TODO: Prepare the data and interactions for the dashboard
-        showDashboard = true;
-
-        // TODO: Determine if intro was already shown before
+        // AR sessions need to be started by user action, so this dialog is always needed
         showIntro = true;
+
+        showOutro = false;
+
+        // First time intro content might be intro cards
+        hasIntroSeen = false;
+
+        // TODO: Determine if dashboard should be shown
+        showDashboard = false;
     })
 
     /**
@@ -59,24 +70,36 @@
     function startAr() {
         // TODO: Start initialisation of the viewer
         showDashboard = false;
+        showOutro = false;
         showAr = true;
 
         tick().then(() => viewer.startAr());
+    }
+
+    function sessionEnded() {
+        showAr = false;
+        showOutro = true;
     }
 </script>
 
 
 {#if showIntro}
-    <Overlay withOkFooter="{isArAvailable}" on:okAction={closeIntro}>
-        <div slot="content">{@html intro}</div>
-        <div slot="message">{@html isArAvailable ? arAvailable : arUnavailable}</div>
+    <Overlay withOkFooter="{StateStore.arIsAvailable}" on:okAction={closeIntro}>
+        <div slot="content">{@html hasIntroSeen ? info : intro}</div>
+        <div slot="message">{@html StateStore.arIsAvailable ? arOkMessage : noArMessage}</div>
     </Overlay>
 {/if}
 
-{#if showDashboard}
+{#if showOutro}
+    <Overlay withOkFooter="{true}" on:okAction={startAr}>
+        <div slot="content">{@html outro}</div>
+    </Overlay>
+{/if}
+
+{#if showDashboard && StateStore.arIsAvailable}
     <Dashboard bind:this={dashboard} on:okClicked={startAr} />
 {/if}
 
-{#if !showDashboard && showAr}
-    <Viewer bind:this={viewer}/>
+{#if showAr && !showDashboard}
+    <Viewer bind:this={viewer} on:arSessionEnded={sessionEnded} />
 {/if}

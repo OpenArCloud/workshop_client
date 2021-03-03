@@ -16,7 +16,7 @@
 
 
 <div>
-    <input id="showagain" type="checkbox" />
+    <input id="showagain" type="checkbox" checked />
     <label for="showagain">Show Dashboard next time</label>
 </div>
 
@@ -26,8 +26,13 @@
 <p>GeoPose</p>
 
 <p>Headless available</p>
-<p>Connected to p2p network</p>
 
-<p>localize now</p>
+<div>
+    <input id="allowP2p" type="checkbox" checked />
+    <label for="allowP2p">Connect to local network</label>
+    <p>Connected to p2p network</p>
+</div>
 
-<button on:click={() => dispatch('okClicked')}>Start AR</button>
+<button>localize now</button>
+
+<button on:click={() => dispatch('okClicked')}>Go immersive</button>

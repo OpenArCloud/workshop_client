@@ -33,6 +33,7 @@
     "chai": "^4.2.0"
   },
   "dependencies": {
+    "playcanvas": "^1.39.4",
     "svelte": "^3.34.0"
   }
 }

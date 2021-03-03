@@ -11,9 +11,6 @@
     import { createEventDispatcher } from 'svelte';
     import { overlayOkButton } from '../contentstore.js';
 
-    // HTML formatted content, displayed in the upper part of the overlay
-    export let content;
-
     // Defines if the footer is displayed
     export let withOkFooter = true;
 
