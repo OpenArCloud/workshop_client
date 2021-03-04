@@ -15,7 +15,7 @@
     import Viewer from '@components/Viewer.svelte';
 
     import StateStore from './stateStore.svelte';
-    import { info, intro, arOkMessage, noArMessage, outro } from './contentstore.js';
+    import { info, intro, arOkMessage, noArMessage, outro, startedOkLabel, doitOkLabel } from './contentstore.js';
 
 
     let showIntro;
@@ -25,8 +25,7 @@
     let showDashboard;
     let showAr;
 
-    let dashboard;
-    let viewer;
+    let dashboard, viewer;
 
     $: showAr = StateStore.arIsAvailable && !showIntro && !showDashboard;
 
@@ -84,14 +83,14 @@
 
 
 {#if showIntro}
-    <Overlay withOkFooter="{StateStore.arIsAvailable}" on:okAction={closeIntro}>
+    <Overlay withOkFooter="{StateStore.arIsAvailable}" okButtonLabel="{startedOkLabel}" on:okAction={closeIntro}>
         <div slot="content">{@html hasIntroSeen ? info : intro}</div>
         <div slot="message">{@html StateStore.arIsAvailable ? arOkMessage : noArMessage}</div>
     </Overlay>
 {/if}
 
 {#if showOutro}
-    <Overlay withOkFooter="{true}" on:okAction={startAr}>
+    <Overlay withOkFooter="{true}" okButtonLabel="{doitOkLabel}" on:okAction={startAr}>
         <div slot="content">{@html outro}</div>
     </Overlay>
 {/if}

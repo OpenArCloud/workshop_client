@@ -30,6 +30,9 @@ export const arOkMessage = `<h2>AR is available</h2>`;
 // The device the app is running on is unable to start an AR session with the given requirements
 export const noArMessage = `<h2>Sorry Dave, I can't do that.</h2>`;
 
-// OK-button label of the overlay / dialog
-export const overlayOkButton = `Let's get started`;
+// Button label
+export const startedOkLabel = `Let's get started`;
+
+// Button label
+export const doitOkLabel = `Let's do it`;
 

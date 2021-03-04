@@ -9,10 +9,11 @@
 -->
 <script>
     import { createEventDispatcher } from 'svelte';
-    import { overlayOkButton } from '../contentstore.js';
 
     // Defines if the footer is displayed
     export let withOkFooter = true;
+
+    export let okButtonLabel = 'OK';
 
     // Used to dispatch events to parent
     const dispatch = createEventDispatcher();
@@ -67,9 +68,7 @@
 
         <footer>
             {#if withOkFooter}
-            <button on:click={() => dispatch('okAction')}>
-                {overlayOkButton}
-            </button>
+            <button on:click={() => dispatch('okAction')}>{okButtonLabel}</button>
             {/if}
         </footer>
     </div>
