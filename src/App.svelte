@@ -14,8 +14,8 @@
     import Overlay from '@components/Overlay.svelte'
     import Viewer from '@components/Viewer.svelte';
 
-    import StateStore from './stateStore.svelte';
-    import { info, intro, arOkMessage, noArMessage, outro, startedOkLabel, doitOkLabel } from './contentstore.js';
+    import StateStore from '@src/stateStore.svelte';
+    import { info, intro, arOkMessage, noArMessage, outro, startedOkLabel, doitOkLabel } from '@src/contentstore.svelte';
 
 
     let showIntro;
@@ -27,7 +27,7 @@
 
     let dashboard, viewer;
 
-    $: showAr = StateStore.arIsAvailable && !showIntro && !showDashboard;
+    $: showAr = StateStore.$arIsAvailable && !showIntro && !showDashboard;
 
 
     /**
@@ -36,7 +36,7 @@
     onMount(() => {
         if (navigator.xr !== undefined || true) {
             navigator.xr.isSessionSupported("immersive-ar")
-                .then((available) => StateStore.arIsAvailable = available )
+                .then((available) => StateStore.$arIsAvailable = available )
         }
 
         // AR sessions need to be started by user action, so this dialog is always needed
@@ -48,7 +48,7 @@
         hasIntroSeen = false;
 
         // TODO: Determine if dashboard should be shown
-        showDashboard = false;
+        showDashboard = true;
     })
 
     /**
@@ -83,19 +83,19 @@
 
 
 {#if showIntro}
-    <Overlay withOkFooter="{StateStore.arIsAvailable}" okButtonLabel="{startedOkLabel}" on:okAction={closeIntro}>
-        <div slot="content">{@html hasIntroSeen ? info : intro}</div>
-        <div slot="message">{@html StateStore.arIsAvailable ? arOkMessage : noArMessage}</div>
+    <Overlay withOkFooter="{StateStore.$arIsAvailable}" okButtonLabel="{$startedOkLabel}" on:okAction={closeIntro}>
+        <div slot="content">{@html hasIntroSeen ? $info : $intro}</div>
+        <div slot="message">{@html StateStore.$arIsAvailable ? $arOkMessage : $noArMessage}</div>
     </Overlay>
 {/if}
 
 {#if showOutro}
-    <Overlay withOkFooter="{true}" okButtonLabel="{doitOkLabel}" on:okAction={startAr}>
-        <div slot="content">{@html outro}</div>
+    <Overlay withOkFooter="{true}" okButtonLabel="{$doitOkLabel}" on:okAction={startAr}>
+        <div slot="content">{@html $outro}</div>
     </Overlay>
 {/if}
 
-{#if showDashboard && StateStore.arIsAvailable}
+{#if showDashboard && StateStore.$arIsAvailable}
     <Dashboard bind:this={dashboard} on:okClicked={startAr} />
 {/if}
 

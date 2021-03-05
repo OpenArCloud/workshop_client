@@ -17,10 +17,10 @@ module.exports = {
     // }
   ],
   optimize: {
-    bundle: true,
+    //bundle: true,
   },
   packageOptions: {
-    source: "remote"
+    //source: "remote"
   },
   devOptions: {
     secure: true,
@@ -32,6 +32,7 @@ module.exports = {
   },
   alias: {
     '@components': './src/components',
-    '@public': './public'
+    '@public': './public',
+    '@src': './src'
   }
 };
