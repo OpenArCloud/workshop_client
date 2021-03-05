@@ -7,58 +7,62 @@
     Handles and coordinates all global aspects of the app.
 -->
 <script>
-    import { onMount } from "svelte";
-    import { tick } from 'svelte';
+    import { onMount, tick } from "svelte";
+
+    import { getServicesAtLocation } from 'ssd-access';
+
+    import { getCurrentLocation } from '@src/core/common.js'
 
     import Dashboard from '@components/Dashboard.svelte';
     import Overlay from '@components/Overlay.svelte'
     import Viewer from '@components/Viewer.svelte';
 
-    import StateStore from '@src/stateStore.svelte';
-    import { info, intro, arOkMessage, noArMessage, outro, startedOkLabel, doitOkLabel } from '@src/contentstore.svelte';
+    import { arIsAvailable, showDashboard, hasIntroSeen, initialLocation } from './stateStore.js';
+    import { info, intro, arOkMessage, noArMessage, outro, startedOkLabel, doitOkLabel } from './contentstore.js';
 
 
-    let showIntro;
-    let hasIntroSeen;
-    let showOutro;
-
-    let showDashboard;
-    let showAr;
-
+    let showWelcome, showOutro;
     let dashboard, viewer;
 
-    $: showAr = StateStore.$arIsAvailable && !showIntro && !showDashboard;
+    let shouldShowDashboard;
+
+    $: showAr = $arIsAvailable && !showWelcome && !shouldShowDashboard;
 
 
     /**
      * Initial setup of the viewer. Called after the component is first rendered to the DOM.
      */
     onMount(() => {
-        if (navigator.xr !== undefined || true) {
-            navigator.xr.isSessionSupported("immersive-ar")
-                .then((available) => StateStore.$arIsAvailable = available )
-        }
-
-        // AR sessions need to be started by user action, so this dialog is always needed
-        showIntro = true;
-
+        // AR sessions need to be started by user action, so welcome dialog (or the dashboard) is always needed
+        showWelcome = true;
         showOutro = false;
 
-        // First time intro content might be intro cards
-        hasIntroSeen = false;
+        // Delay close of dashboard until next request
+        shouldShowDashboard = $showDashboard;
 
-        // TODO: Determine if dashboard should be shown
-        showDashboard = true;
+        getCurrentLocation()
+            .then((currentLocation) => {
+                $initialLocation = currentLocation;
+                return getServicesAtLocation(currentLocation.regionCode, currentLocation.h3Index)
+            })
+            .then(ssr => {
+                // TODO: Add main info to store / dashboard
+                console.log(ssr);
+            })
+            .catch(error => {
+                // TODO: Inform user
+                console.log(error);
+            });
     })
 
     /**
      * Close intro dialog and store that the persistently that the intro was seen.
      */
     function closeIntro() {
-        // TODO: Persist that intro was seen
-        showIntro = false;
+        $hasIntroSeen = true;
+        showWelcome = false;
 
-        if (!showDashboard) {
+        if (!shouldShowDashboard) {
             startAr();
         }
     }
@@ -68,7 +72,7 @@
      */
     function startAr() {
         // TODO: Start initialisation of the viewer
-        showDashboard = false;
+        shouldShowDashboard = false;
         showOutro = false;
         showAr = true;
 
@@ -78,14 +82,19 @@
     function sessionEnded() {
         showAr = false;
         showOutro = true;
+        shouldShowDashboard = $showDashboard;
     }
 </script>
 
 
-{#if showIntro}
-    <Overlay withOkFooter="{StateStore.$arIsAvailable}" okButtonLabel="{$startedOkLabel}" on:okAction={closeIntro}>
-        <div slot="content">{@html hasIntroSeen ? $info : $intro}</div>
-        <div slot="message">{@html StateStore.$arIsAvailable ? $arOkMessage : $noArMessage}</div>
+{#if shouldShowDashboard && $arIsAvailable}
+    <Dashboard bind:this={dashboard} on:okClicked={startAr} />
+{/if}
+
+{#if showWelcome}
+    <Overlay withOkFooter="{$arIsAvailable}" okButtonLabel="{$startedOkLabel}" on:okAction={closeIntro}>
+        <div slot="content">{@html $hasIntroSeen ? $info : $intro}</div>
+        <div slot="message">{@html $arIsAvailable ? $arOkMessage : $noArMessage}</div>
     </Overlay>
 {/if}
 
@@ -95,10 +104,6 @@
     </Overlay>
 {/if}
 
-{#if showDashboard && StateStore.$arIsAvailable}
-    <Dashboard bind:this={dashboard} on:okClicked={startAr} />
-{/if}
-
-{#if showAr && !showDashboard}
+{#if showAr && !shouldShowDashboard}
     <Viewer bind:this={viewer} on:arSessionEnded={sessionEnded} />
 {/if}

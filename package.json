@@ -33,7 +33,9 @@
     "snowpack": "^3.0.13"
   },
   "dependencies": {
+    "h3-js": "^3.7.0",
     "playcanvas": "^1.39.4",
+    "ssd-access": "^0.1.0",
     "svelte": "^3.35.0"
   }
 }
