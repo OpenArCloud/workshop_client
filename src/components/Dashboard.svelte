@@ -12,14 +12,12 @@
 
     import { supportedCountries} from 'ssd-access';
 
-    import { showDashboard, initialLocation, ssr, selectedGeoPoseService, selectedContentService } from '@src/stateStore.js';
+    import { showDashboard, initialLocation, availableGeoPoseServices, availableContentServices,
+        selectedGeoPoseService, selectedContentService } from '@src/stateStore.js';
 
 
     // Used to dispatch events to parent
     const dispatch = createEventDispatcher();
-
-    $: availableGeoPoseServices = $ssr.services.filter((service) => service.type === 'Geopose');
-    $: availableContentServices = $ssr.services.filter((service) => service.type === 'Content-Discovery');
 </script>
 
 
@@ -39,11 +37,11 @@
 
 <dl>
     <dt>GeoPose Server</dt>
-    <dd><select bind:value={$selectedGeoPoseService} disabled="{availableGeoPoseServices.length === 0  || null}">
-        {#if availableGeoPoseServices.length === 0}
+    <dd><select bind:value={$selectedGeoPoseService} disabled="{$availableGeoPoseServices.length === 0  || null}">
+        {#if $availableGeoPoseServices.length === 0}
             <option>None</option>
         {:else}
-            {#each availableGeoPoseServices.length as service}
+            {#each $availableGeoPoseServices.length as service}
                 <option value={service}>{service.title}</option>
             {/each}
         {/if}
@@ -52,11 +50,11 @@
 
 <dl>
     <dt>Content Server</dt>
-    <dd><select bind:value={$selectedContentService} disabled="{availableContentServices.length === 0  || null}">
-        {#if availableContentServices.length === 0}
+    <dd><select bind:value={$selectedContentService} disabled="{$availableContentServices.length === 0  || null}">
+        {#if $availableContentServices.length === 0}
             <option>None</option>
         {:else}
-            {#each availableContentServices.length as service}
+            {#each $availableContentServices.length as service}
                 <option value={service}>{service.title}</option>
             {/each}
         {/if}

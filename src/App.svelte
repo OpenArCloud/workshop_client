@@ -18,7 +18,7 @@
     import Viewer from '@components/Viewer.svelte';
 
     import { arIsAvailable, showDashboard, hasIntroSeen, initialLocation, ssr } from './stateStore.js';
-    import { info, intro, arOkMessage, noArMessage, outro, startedOkLabel, doitOkLabel } from './contentstore.js';
+    import { info, intro, arOkMessage, noArMessage, outro, startedOkLabel, doitOkLabel } from './contentStore.js';
 
 
     let showWelcome, showOutro;

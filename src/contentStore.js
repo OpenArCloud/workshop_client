@@ -61,3 +61,17 @@ export const doitOkLabel = readable('', (set) => {
     return () => set('');
 });
 
+export const movePhoneMessage = readable('', (set) => {
+    set('Move phone slowly left and right');
+    return () => set('');
+})
+
+export const localizeMessage = readable('', (set) => {
+    set('Press button to find your exact position');
+    return () => set('');
+})
+
+export const localizeLabel = readable('', (set) => {
+    set('Localize');
+    return () => set('');
+})

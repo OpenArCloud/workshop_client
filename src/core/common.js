@@ -19,6 +19,16 @@ export const LOCATIONINFO = {
     regionCode: ''
 }
 
+export const SSR = {
+    id: '',
+    type: '',
+    services: [],
+    geometry: {},
+    altitude: 0,
+    provider: '',
+    timestamp: 0
+}
+
 export const SERVICE = {
     id: '',
     type: '',
@@ -71,4 +81,45 @@ export function getCurrentLocation() {
             reject('Location is not available');
         }
     });
+}
+
+
+/**
+ * Converting a WebGLTexture to base64 encoded image.
+ *
+ * Copy paste from https://stackoverflow.com/questions/8191083/can-one-easily-create-an-html-image-element-from-a-webgl-texture-object
+ * Pretty sure this can be optimized for this specific use.
+ *
+ * @param gl    Context of the canvas to use
+ * @param texture       The texture to convert
+ * @param width     Width of the resulting image
+ * @param height        Height of the resulting image
+ * @returns {string}        base64 encoded string of the image (will likely change)
+ */
+export function createImageFromTexture(gl, texture, width, height) {
+    // Create a framebuffer backed by the texture
+    const framebuffer = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+
+    // Read the contents of the framebuffer
+    const data = new Uint8Array(width * height * 4);
+    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, data);
+
+    gl.deleteFramebuffer(framebuffer);
+
+    // Create a 2D canvas to store the result
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+
+    // Copy the pixels to a 2D canvas
+    const imageData = context.createImageData(width, height);
+    imageData.data.set(data);
+    context.putImageData(imageData, 0, 0);
+
+    const img = new Image();
+    img.src = canvas.toDataURL('image/jpeg');
+    return img;
 }

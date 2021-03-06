@@ -8,11 +8,11 @@
 */
 
 
-import { readable, writable } from 'svelte/store';
+import { readable, writable, derived } from 'svelte/store';
 
 import { ssr_empty } from 'ssd-access';
 
-import { LOCATIONINFO, SERVICE } from "./core/common.js";
+import { LOCATIONINFO, SERVICE, SSR } from "./core/common.js";
 
 
 /**
@@ -68,9 +68,29 @@ export const initialLocation = writable({
 /**
  * Currently valid ssr record, containing the last requested spatial services record.
  *
- * @type {Writable<{ssr_empty}>}
+ * @type {Writable<{SSR}>}
  */
 export const ssr = writable(ssr_empty);
+
+
+/**
+ * Derived store of the ssr store for easy access of all contained GeoPose services.
+ *
+ * @type {Readable<SERVICE[]>}
+ */
+export const availableGeoPoseServices = derived(ssr, ($ssr, set) => {
+    set($ssr.services.filter((service) => service.type === 'Geopose'));
+}, []);
+
+
+/**
+ * Derived store of ssr store for easy access of all contained content services.
+ *
+ * @type {Readable<SERVICE[]>}
+ */
+export const availableContentServices = derived(ssr, ($ssr, set) => {
+    set($ssr.services.filter((service) => service.type === 'Content-Discovery'));
+}, []);
 
 
 /**
