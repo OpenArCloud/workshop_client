@@ -28,7 +28,8 @@ module.exports = {
     open: 'none'
   },
   buildOptions: {
-    htmlFragments: true
+    htmlFragments: true,
+    sourcemap: true
   },
   alias: {
     '@components': './src/components',
