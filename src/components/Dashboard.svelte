@@ -10,11 +10,16 @@
 <script>
     import { createEventDispatcher } from 'svelte';
 
-    import { showDashboard } from '@src/stateStore.js';
+    import { supportedCountries} from 'ssd-access';
+
+    import { showDashboard, initialLocation, ssr, selectedGeoPoseService, selectedContentService } from '@src/stateStore.js';
 
 
     // Used to dispatch events to parent
     const dispatch = createEventDispatcher();
+
+    $: availableGeoPoseServices = $ssr.services.filter((service) => service.type === 'Geopose');
+    $: availableContentServices = $ssr.services.filter((service) => service.type === 'Content-Discovery');
 </script>
 
 
@@ -24,9 +29,39 @@
 </div>
 
 <p>Rough location</p>
+<dl>
+    <dt>H3Index</dt>
+    <dd>{$initialLocation.h3Index}</dd>
+    <dt>Region code</dt>
+    <!--  TODO: Might make sense to do some validation here  -->
+    <dd><input list="supported-countries" bind:value={$initialLocation.regionCode} /></dd>
+</dl>
 
-<p>GeoPose Server</p>
-<p>Content Server</p>
+<dl>
+    <dt>GeoPose Server</dt>
+    <dd><select bind:value={$selectedGeoPoseService} disabled="{availableGeoPoseServices.length === 0  || null}">
+        {#if availableGeoPoseServices.length === 0}
+            <option>None</option>
+        {:else}
+            {#each availableGeoPoseServices.length as service}
+                <option value={service}>{service.title}</option>
+            {/each}
+        {/if}
+    </select></dd>
+</dl>
+
+<dl>
+    <dt>Content Server</dt>
+    <dd><select bind:value={$selectedContentService} disabled="{availableContentServices.length === 0  || null}">
+        {#if availableContentServices.length === 0}
+            <option>None</option>
+        {:else}
+            {#each availableContentServices.length as service}
+                <option value={service}>{service.title}</option>
+            {/each}
+        {/if}
+    </select></dd>
+</dl>
 
 <p>Headless available</p>
 
@@ -37,3 +72,5 @@
 </div>
 
 <button on:click={() => dispatch('okClicked')}>Go immersive</button>
+
+{@html supportedCountries}

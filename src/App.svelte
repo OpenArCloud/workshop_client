@@ -17,7 +17,7 @@
     import Overlay from '@components/Overlay.svelte'
     import Viewer from '@components/Viewer.svelte';
 
-    import { arIsAvailable, showDashboard, hasIntroSeen, initialLocation } from './stateStore.js';
+    import { arIsAvailable, showDashboard, hasIntroSeen, initialLocation, ssr } from './stateStore.js';
     import { info, intro, arOkMessage, noArMessage, outro, startedOkLabel, doitOkLabel } from './contentstore.js';
 
 
@@ -45,9 +45,12 @@
                 $initialLocation = currentLocation;
                 return getServicesAtLocation(currentLocation.regionCode, currentLocation.h3Index)
             })
-            .then(ssr => {
+            .then(services => {
                 // TODO: Add main info to store / dashboard
-                console.log(ssr);
+                if (services.length !== 0) {
+                    $ssr = services;
+                }
+                console.log($ssr);
             })
             .catch(error => {
                 // TODO: Inform user

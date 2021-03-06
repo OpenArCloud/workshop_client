@@ -31,6 +31,8 @@
         display: flex;
         align-items: center;
         justify-content: center;
+
+        background-color: rgba(128 128 128 / 60%)
     }
 
     button {
@@ -57,6 +59,8 @@
         box-shadow: var(--ui-shadow);
 
         padding: var(--padding-text);
+
+        background-color: white;
     }
 </style>
 

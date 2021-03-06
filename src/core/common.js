@@ -14,16 +14,25 @@ import * as h3 from "h3-js";
  *
  * @type {{regionCode: string, h3Index: number}}
  */
-export const locationInfo = {
+export const LOCATIONINFO = {
     h3Index: 0,
     regionCode: ''
+}
+
+export const SERVICE = {
+    id: '',
+    type: '',
+    title: '',
+    description: '',
+    url: '',
+    capabilities: []
 }
 
 
 /**
  *  Promise resolving to the current location (lat, lon) and region code (country currently) of the device.
  *
- * @returns {Promise<locationInfo>}     Object with lat, lon, regionCode or rejects
+ * @returns {Promise<LOCATIONINFO>}     Object with lat, lon, regionCode or rejects
  */
 export function getCurrentLocation() {
     return new Promise((resolve, reject) => {

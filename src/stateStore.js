@@ -10,6 +10,10 @@
 
 import { readable, writable } from 'svelte/store';
 
+import { ssr_empty } from 'ssd-access';
+
+import { LOCATIONINFO, SERVICE } from "./core/common.js";
+
 
 /**
  * Determines the availability of AR functions on the current device.
@@ -31,7 +35,7 @@ export const arIsAvailable = readable(false, (set) => {
  *
  * @type {boolean}  true when dashboard should be shown, false otherwise
  */
-const storedShowDashboard = localStorage.getItem('showdashboard') !== 'false';
+const storedShowDashboard = true;  // localStorage.getItem('showdashboard') !== 'false';
 export const showDashboard = writable(storedShowDashboard);
 showDashboard.subscribe(value => {
     localStorage.setItem('showdashboard', value === true ? 'true' : 'false');
@@ -50,4 +54,36 @@ hasIntroSeen.subscribe(value => {
 })
 
 
-export const initialLocation = writable(null);
+/**
+ * The rough location of the device when the application was started.
+ *
+ * @type {Writable<LOCATIONINFO>}
+ */
+export const initialLocation = writable({
+    h3Index: 0,
+    regionCode: ''
+});
+
+
+/**
+ * Currently valid ssr record, containing the last requested spatial services record.
+ *
+ * @type {Writable<{ssr_empty}>}
+ */
+export const ssr = writable(ssr_empty);
+
+
+/**
+ * The one of the returned GeoPose service to be used for localisation.
+ *
+ * @type {Writable<SERVICE>}
+ */
+export const selectedGeoPoseService = writable('none');
+
+
+/**
+ * The one of the returned content services to be used to look for content around the current location.
+ *
+ * @type {Writable<SERVICE>}
+ */
+export const selectedContentService = writable('none');
