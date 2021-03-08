@@ -16,6 +16,8 @@ import * as h3 from "h3-js";
  */
 export const LOCATIONINFO = {
     h3Index: 0,
+    lat: 0,
+    lon: 0,
     regionCode: ''
 }
 
@@ -64,6 +66,8 @@ export function getCurrentLocation() {
                         const countryCode = data.address.country_code;
                         resolve({
                             h3Index: h3.geoToH3(latAngle, lonAngle, 8),
+                            lat: latAngle,
+                            lon: lonAngle,
                             regionCode: supportedCountries.includes(countryCode) ? countryCode : 'us'
                         })
                     })
@@ -114,12 +118,14 @@ export function createImageFromTexture(gl, texture, width, height) {
     canvas.height = height;
     const context = canvas.getContext('2d');
 
+
+    // TODO: Flip image vertically
+
+
     // Copy the pixels to a 2D canvas
     const imageData = context.createImageData(width, height);
     imageData.data.set(data);
     context.putImageData(imageData, 0, 0);
 
-    const img = new Image();
-    img.src = canvas.toDataURL('image/jpeg');
-    return img;
+    return canvas.toDataURL('image/jpeg');
 }

@@ -61,6 +61,8 @@ hasIntroSeen.subscribe(value => {
  */
 export const initialLocation = writable({
     h3Index: 0,
+    lat: 0,
+    lon: 0,
     regionCode: ''
 });
 
@@ -68,9 +70,9 @@ export const initialLocation = writable({
 /**
  * Currently valid ssr record, containing the last requested spatial services record.
  *
- * @type {Writable<{SSR}>}
+ * @type {Writable<{SSR[]}>}
  */
-export const ssr = writable(ssr_empty);
+export const ssr = writable([]);
 
 
 /**
@@ -79,7 +81,15 @@ export const ssr = writable(ssr_empty);
  * @type {Readable<SERVICE[]>}
  */
 export const availableGeoPoseServices = derived(ssr, ($ssr, set) => {
-    set($ssr.services.filter((service) => service.type === 'Geopose'));
+    let geoposeServices = [];
+    for (let record of $ssr) {
+        geoposeServices.concat(record.services
+            .forEach(service => {
+                if(service.type === 'geopose')
+                    geoposeServices.push(service);
+            }));
+    }
+    set(geoposeServices);
 }, []);
 
 
@@ -89,7 +99,15 @@ export const availableGeoPoseServices = derived(ssr, ($ssr, set) => {
  * @type {Readable<SERVICE[]>}
  */
 export const availableContentServices = derived(ssr, ($ssr, set) => {
-    set($ssr.services.filter((service) => service.type === 'Content-Discovery'));
+    let contentServices = [];
+    for (let record of $ssr) {
+        contentServices.concat(record.services
+            .forEach(service => {
+                if (service.type === 'content-discovery')
+                    contentServices.push(service);
+            }));
+    }
+    set(contentServices);
 }, []);
 
 

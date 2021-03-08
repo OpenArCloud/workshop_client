@@ -8,11 +8,25 @@
 -->
 <script>
     import { createEventDispatcher } from 'svelte';
+    import { fade } from 'svelte/transition';
 
     import * as pc from 'playcanvas';
+    import * as mat4 from "@src/third-party/mat4";
+    import { v4 as uuidv4 } from 'uuid';
+
+    import { sendRequest, objectEndpoint, validateRequest } from 'gpp-access';
+    import GeoPoseRequest from 'gpp-access/request/GeoPoseRequest.js';
+    import ImageOrientation from 'gpp-access/request/options/ImageOrientation.js';
+    import { IMAGEFORMAT } from 'gpp-access/GppGlobals.js';
 
     import { movePhoneMessage, localizeMessage, localizeLabel } from '@src/contentStore';
-    import { createImageFromTexture} from "@src/core/common";
+    import { initialLocation, availableContentServices } from '@src/stateStore';
+    import { createImageFromTexture } from "@src/core/common";
+
+    import { initializeGLCube, drawScene } from '@src/core/texture';
+
+    export let converter;
+    export let rotator;
 
 
     const message = (msg) => console.log(msg);
@@ -23,17 +37,25 @@
     let canvas, overlay;
 
     let app;
-    let gl, glBinding, xrRefSpace;
 
     let captureImage = false;
-    let hasPose = false, isLocalizing = false, isLocalized = false;
+    let showFooter = false, hasPose = false, isLocalizing = false, isLocalized = false;
 
+    // XR globals.
+    let xrRefSpace = null;
+
+    // WebGL scene globals.
+    let gl = null;
+    let glBinding = null;
+    let texture = null;
 
 
     /**
      * Verifies that AR is available as required by the provided configuration data, and starts the session.
      */
     export function startAr() {
+        showFooter = true;
+
         app = new pc.Application(canvas, {
             mouse: new pc.Mouse(canvas),
             touch: new pc.TouchDevice(canvas),
@@ -114,6 +136,9 @@
                 gl = canvas.getContext('webgl2', { xrCompatible: true });
                 glBinding = new XRWebGLBinding(app.xr.session, gl);
 
+                initializeGLCube(gl);
+
+                app.xr.session.updateRenderState({ baseLayer: new XRWebGLLayer(app.xr.session, gl) });
                 app.xr.session.requestReferenceSpace('local').then((refSpace) => {
                     xrRefSpace = refSpace;
                 });
@@ -157,19 +182,42 @@
                 let viewport = app.xr.session.renderState.baseLayer.getViewport(view);
                 gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 
+                texture = glBinding.getCameraImage(frame, view);
+
                 if (captureImage) {
                     captureImage = false;
 
-                    const texture = glBinding.getCameraImage(frame, view);
-                    const image = createImageFromTexture(gl, texture, viewport.width / 2, viewport.height / 2);
+                    const image = createImageFromTexture(gl, texture, viewport.width, viewport.height);
 
                     // To verify if the image was captured correctly
-                    document.body.appendChild(image);
+                    const img = new Image();
+                    img.src = image;
+                    document.body.appendChild(img);
 
-                    console.log('created');
+                    localize(pose, image, viewport.width, viewport.height);
                 }
+
+                drawScene(gl, texture, view);
             }
         }
+    }
+
+    function localize(pose, image, width, height) {
+        const geoPoseRequest = new GeoPoseRequest(uuidv4())
+            .addCameraData(IMAGEFORMAT.JPG, [width, height], image.split(',')[1], 0, new ImageOrientation(false, 3))
+            .addLocationData($initialLocation.lat, $initialLocation.lon, 0, 0, 0, 0, 0);
+        // Services haven't implemented recent changes to the protocol yet
+        validateRequest(false);
+        sendRequest(`${$availableContentServices[0].url}/${objectEndpoint}`, JSON.stringify(geoPoseRequest))
+            .then(data => {
+                isLocalized = true;
+                showFooter = false;
+            })
+            .catch(error => {
+                isLocalizing = false;
+
+                console.error(error);
+            });
     }
 </script>
 
@@ -204,7 +252,8 @@
 
 <canvas id='application' bind:this={canvas}></canvas>
 <aside bind:this={overlay} on:beforexrselect={(event) => event.preventDefault()}>
-    <footer>
+    {#if showFooter}
+    <footer in:fade out:fade={{delay: 1000}}>
         {#if !hasPose}
             <p>{$movePhoneMessage}</p>
         {:else if isLocalizing}
@@ -213,6 +262,9 @@
         {:else if hasPose && !isLocalized}
             <p>{$localizeMessage}</p>
             <button on:click={startLocalisation}>{$localizeLabel}</button>
+        {:else if isLocalized}
+            <p>successfully localized</p>
         {/if}
     </footer>
+    {/if}
 </aside>

@@ -41,7 +41,7 @@
         {#if $availableGeoPoseServices.length === 0}
             <option>None</option>
         {:else}
-            {#each $availableGeoPoseServices.length as service}
+            {#each $availableGeoPoseServices as service}
                 <option value={service}>{service.title}</option>
             {/each}
         {/if}
@@ -54,7 +54,7 @@
         {#if $availableContentServices.length === 0}
             <option>None</option>
         {:else}
-            {#each $availableContentServices.length as service}
+            {#each $availableContentServices as service}
                 <option value={service}>{service.title}</option>
             {/each}
         {/if}

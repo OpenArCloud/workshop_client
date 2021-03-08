@@ -22,7 +22,7 @@
 
 
     let showWelcome, showOutro;
-    let dashboard, viewer;
+    let dashboard, viewer, converter, rotator;
 
     let shouldShowDashboard;
 
@@ -50,7 +50,6 @@
                 if (services.length !== 0) {
                     $ssr = services;
                 }
-                console.log($ssr);
             })
             .catch(error => {
                 // TODO: Inform user
@@ -64,6 +63,7 @@
     function closeIntro() {
         $hasIntroSeen = true;
         showWelcome = false;
+        showOutro = false;
 
         if (!shouldShowDashboard) {
             startAr();
@@ -102,11 +102,15 @@
 {/if}
 
 {#if showOutro}
-    <Overlay withOkFooter="{true}" okButtonLabel="{$doitOkLabel}" on:okAction={startAr}>
+    <Overlay withOkFooter="{true}" okButtonLabel="{$doitOkLabel}" on:okAction={closeIntro}>
         <div slot="content">{@html $outro}</div>
     </Overlay>
 {/if}
 
 {#if showAr && !shouldShowDashboard}
-    <Viewer bind:this={viewer} on:arSessionEnded={sessionEnded} />
+    <Viewer bind:this={viewer} on:arSessionEnded={sessionEnded} rotator="{rotator}" converter="{converter}"/>
 {/if}
+
+
+<canvas bind:this={converter}></canvas>
+<canvas bind:this={rotator}></canvas>
