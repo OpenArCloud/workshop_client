@@ -110,7 +110,3 @@
 {#if showAr && !shouldShowDashboard}
     <Viewer bind:this={viewer} on:arSessionEnded={sessionEnded} rotator="{rotator}" converter="{converter}"/>
 {/if}
-
-
-<canvas bind:this={converter}></canvas>
-<canvas bind:this={rotator}></canvas>

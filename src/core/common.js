@@ -109,7 +109,6 @@ export function createImageFromTexture(gl, texture, width, height) {
     // Read the contents of the framebuffer
     const data = new Uint8Array(width * height * 4);
     gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, data);
-
     gl.deleteFramebuffer(framebuffer);
 
     // Create a 2D canvas to store the result
@@ -118,14 +117,32 @@ export function createImageFromTexture(gl, texture, width, height) {
     canvas.height = height;
     const context = canvas.getContext('2d');
 
-
-    // TODO: Flip image vertically
-
-
     // Copy the pixels to a 2D canvas
     const imageData = context.createImageData(width, height);
     imageData.data.set(data);
-    context.putImageData(imageData, 0, 0);
 
+    // Image is vertically flipped
+    // Didn't find a better way to flip the image back
+    const imageFlip = new ImageData (canvas.width, canvas.height) ;
+    const Npel      = imageData.data.length / 4 ;
+
+    for ( let kPel = 0 ; kPel < Npel ; kPel++ ) {
+        const kFlip      = flip_index (kPel, canvas.width, canvas.height) ;
+        const offset     = 4 * kPel ;
+        const offsetFlip = 4 * kFlip ;
+        imageFlip.data[offsetFlip] = imageData.data[offset] ;
+        imageFlip.data[offsetFlip + 1] = imageData.data[offset + 1] ;
+        imageFlip.data[offsetFlip + 2] = imageData.data[offset + 2] ;
+        imageFlip.data[offsetFlip + 3] = imageData.data[offset + 3] ;
+    }
+
+    context.putImageData(imageFlip, 0, 0);
     return canvas.toDataURL('image/jpeg');
+}
+
+function flip_index (kPel, width, height) {
+    var i     = Math.floor (kPel / width) ;
+    var j     = kPel % width ;
+    var kFlip = height * width - (i + 1) * width + j ;
+    return kFlip ;
 }

@@ -47,7 +47,6 @@
     // WebGL scene globals.
     let gl = null;
     let glBinding = null;
-    let texture = null;
 
 
     /**
@@ -182,12 +181,12 @@
                 let viewport = app.xr.session.renderState.baseLayer.getViewport(view);
                 gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 
-                texture = glBinding.getCameraImage(frame, view);
+                const cameraTexture = glBinding.getCameraImage(frame, pose.cameraViews[0]);
 
                 if (captureImage) {
                     captureImage = false;
 
-                    const image = createImageFromTexture(gl, texture, viewport.width, viewport.height);
+                    const image = createImageFromTexture(gl, cameraTexture, viewport.width, viewport.height);
 
                     // To verify if the image was captured correctly
                     const img = new Image();
@@ -197,15 +196,16 @@
                     localize(pose, image, viewport.width, viewport.height);
                 }
 
-                drawScene(gl, texture, view);
+                drawScene(gl, cameraTexture, view);
             }
         }
     }
 
     function localize(pose, image, width, height) {
         const geoPoseRequest = new GeoPoseRequest(uuidv4())
-            .addCameraData(IMAGEFORMAT.JPG, [width, height], image.split(',')[1], 0, new ImageOrientation(false, 3))
+            .addCameraData(IMAGEFORMAT.JPG, [width, height], image.split(',')[1], 0, new ImageOrientation(false, 0))
             .addLocationData($initialLocation.lat, $initialLocation.lon, 0, 0, 0, 0, 0);
+
         // Services haven't implemented recent changes to the protocol yet
         validateRequest(false);
         sendRequest(`${$availableContentServices[0].url}/${objectEndpoint}`, JSON.stringify(geoPoseRequest))
