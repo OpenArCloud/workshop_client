@@ -6,14 +6,16 @@
 <!--
     This component displays the internals of the app, and allows to change them when possible.
 -->
-
 <script>
     import { createEventDispatcher } from 'svelte';
 
     import { supportedCountries} from 'ssd-access';
 
     import { showDashboard, initialLocation, availableGeoPoseServices, availableContentServices,
-        selectedGeoPoseService, selectedContentService } from '@src/stateStore.js';
+        selectedGeoPoseService, selectedContentService, arMode, currentMarkerImage,
+        currentMarkerImageWidth } from '@src/stateStore';
+
+    import { ARMODES } from '@core/common';
 
 
     // Used to dispatch events to parent
@@ -21,18 +23,37 @@
 </script>
 
 
+<!-- TODO: Extract strings to contentStore -->
+<!-- TODO: Add countrycode -->
+<!-- TODO: Add GeoPose -->
+
 <div>
     <input id="showagain" type="checkbox" bind:checked={$showDashboard} />
     <label for="showagain">Show Dashboard next time</label>
 </div>
 
-<p>Rough location</p>
 <dl>
     <dt>H3Index</dt>
     <dd>{$initialLocation.h3Index}</dd>
     <dt>Region code</dt>
     <!--  TODO: Might make sense to do some validation here  -->
     <dd><input list="supported-countries" bind:value={$initialLocation.regionCode} /></dd>
+</dl>
+
+<dl>
+    <dt>AR mode</dt>
+    <dd>
+        <input id="armodeoscp" type="radio" bind:group={$arMode} value="{ARMODES.oscp}" />
+        <label for="armodeoscp">{ARMODES.oscp}</label>
+    </dd>
+    <dd>
+        <input id="armodemarker" type="radio" bind:group={$arMode} value="{ARMODES.marker}" />
+        <label for="armodemarker">{ARMODES.marker}</label>
+    </dd>
+    <dd>
+        <input id="armodeauto" type="radio" bind:group={$arMode} value="{ARMODES.auto}" />
+        <label for="armodeauto">{ARMODES.auto}</label>
+    </dd>
 </dl>
 
 <dl>
@@ -61,7 +82,14 @@
     </select></dd>
 </dl>
 
-<p>Headless available</p>
+<dl>
+    <dt>Marker image</dt>
+    <dd>{$currentMarkerImage}</dd>
+    <dt>Width</dt>
+    <dd><input type="number" bind:value={$currentMarkerImageWidth} />m</dd>
+</dl>
+
+<p>Headless available (y/n)</p>
 
 <div>
     <input id="allowP2p" type="checkbox" checked />

@@ -17,7 +17,7 @@ module.exports = {
     // }
   ],
   optimize: {
-    //bundle: true,
+    bundle: true,
   },
   packageOptions: {
     //source: "remote"
@@ -32,6 +32,7 @@ module.exports = {
   },
   alias: {
     '@components': './src/components',
+    '@core': './src/core',
     '@public': './public',
     '@src': './src'
   }

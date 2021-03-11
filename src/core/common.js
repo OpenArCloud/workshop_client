@@ -3,9 +3,9 @@
   This code is licensed under MIT license (see LICENSE for details)
 */
 
-/*  */
+/* Provider for common data types and functions */
 
-import { supportedCountries } from 'ssd-access';
+import {supportedCountries} from 'ssd-access';
 import * as h3 from "h3-js";
 
 
@@ -21,6 +21,11 @@ export const LOCATIONINFO = {
     regionCode: ''
 }
 
+/**
+ * Empty Spatial Services Record to initialize variables.
+ *
+ * @type {{altitude: number, provider: string, geometry: {}, id: string, services: [], type: string, timestamp: number}}
+ */
 export const SSR = {
     id: '',
     type: '',
@@ -31,6 +36,11 @@ export const SSR = {
     timestamp: 0
 }
 
+/**
+ * Empty service value, contained in the services array of an SSR.
+ *
+ * @type {{capabilities: [], description: string, id: string, type: string, title: string, url: string}}
+ */
 export const SERVICE = {
     id: '',
     type: '',
@@ -38,6 +48,21 @@ export const SERVICE = {
     description: '',
     url: '',
     capabilities: []
+}
+
+/**
+ * Implemented AR modes of the client.
+ *
+ * auto: The client selects one of the modes, depending the availability of AR functionality and discovery services
+ * oscp: Use discovery services for localisation and content discovery
+ * marker: Use marker to define a reference point for content
+ *
+ * @type {{auto: string, oscp: string, marker: string}}
+ */
+export const ARMODES = {
+    auto: 'Auto',
+    marker: 'Marker',
+    oscp: 'ARCloud'
 }
 
 
@@ -143,6 +168,5 @@ export function createImageFromTexture(gl, texture, width, height) {
 function flip_index (kPel, width, height) {
     var i     = Math.floor (kPel / width) ;
     var j     = kPel % width ;
-    var kFlip = height * width - (i + 1) * width + j ;
-    return kFlip ;
+    return height * width - (i + 1) * width + j ;
 }

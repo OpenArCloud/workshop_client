@@ -10,9 +10,7 @@
 
 import { readable, writable, derived } from 'svelte/store';
 
-import { ssr_empty } from 'ssd-access';
-
-import { LOCATIONINFO, SERVICE, SSR } from "./core/common.js";
+import { LOCATIONINFO, SERVICE, ARMODES } from "./core/common.js";
 
 
 /**
@@ -51,6 +49,18 @@ const storedHasIntroSeen = false;  // localStorage.getItem('hasintroseen') === '
 export const hasIntroSeen = writable(storedHasIntroSeen);
 hasIntroSeen.subscribe(value => {
     localStorage.setItem('hasintroseen', value === true ? 'true' : 'false');
+})
+
+
+/**
+ * Reads and stores the setting which AR mode should be used.
+ *
+ * @type {string}
+ */
+const storedArMode = localStorage.getItem('storedarmode');
+export const arMode = writable(storedArMode || ARMODES.auto);
+arMode.subscribe(value => {
+    localStorage.setItem('storedarmode', value);
 })
 
 
@@ -125,3 +135,19 @@ export const selectedGeoPoseService = writable('none');
  * @type {Writable<SERVICE>}
  */
 export const selectedContentService = writable('none');
+
+
+/**
+ * The marker image file to use for marker mode.
+ *
+ * @type {Writable<string>}
+ */
+export const currentMarkerImage = writable('marker.jpg');
+
+
+/**
+ * The width of the marker image in meters.
+ *
+ * @type {Writable<string>}
+ */
+export const currentMarkerImageWidth = writable('0.2');

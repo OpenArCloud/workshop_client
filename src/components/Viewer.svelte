@@ -8,25 +8,24 @@
 -->
 <script>
     import { createEventDispatcher } from 'svelte';
-    import { fade } from 'svelte/transition';
 
     import * as pc from 'playcanvas';
-    import * as mat4 from "@src/third-party/mat4";
-    import { v4 as uuidv4 } from 'uuid';
+    import {v4 as uuidv4} from 'uuid';
 
     import { sendRequest, objectEndpoint, validateRequest } from 'gpp-access';
     import GeoPoseRequest from 'gpp-access/request/GeoPoseRequest.js';
     import ImageOrientation from 'gpp-access/request/options/ImageOrientation.js';
     import { IMAGEFORMAT } from 'gpp-access/GppGlobals.js';
 
-    import { movePhoneMessage, localizeMessage, localizeLabel } from '@src/contentStore';
-    import { initialLocation, availableContentServices } from '@src/stateStore';
-    import { createImageFromTexture } from "@src/core/common";
+    import { initialLocation, availableContentServices, currentMarkerImage,
+        currentMarkerImageWidth } from '@src/stateStore';
+    import { createImageFromTexture, ARMODES } from "@src/core/common";
 
     import { initializeGLCube, drawScene } from '@src/core/texture';
+    import ArCloudOverlay from "./dom-overlays/ArCloudOverlay.svelte";
+    import MarkerOverlay from "./dom-overlays/MarkerOverlay.svelte";
 
-    export let converter;
-    export let rotator;
+    export let activeArMode;
 
 
     const message = (msg) => console.log(msg);
@@ -41,12 +40,11 @@
     let captureImage = false;
     let showFooter = false, hasPose = false, isLocalizing = false, isLocalized = false;
 
-    // XR globals.
     let xrRefSpace = null;
-
-    // WebGL scene globals.
     let gl = null;
     let glBinding = null;
+
+    let trackedImage, trackedImageObject;
 
 
     /**
@@ -58,7 +56,7 @@
         app = new pc.Application(canvas, {
             mouse: new pc.Mouse(canvas),
             touch: new pc.TouchDevice(canvas),
-            graphicsDeviceOptions: { alpha: true }
+            graphicsDeviceOptions: {alpha: true}
         });
 
         app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
@@ -124,24 +122,67 @@
     function startSession(camera) {
         app.xr.domOverlay.root = overlay;
 
-        camera.camera.startXr(pc.XRTYPE_AR, pc.XRSPACE_LOCALFLOOR, {
-            optionalFeatures: ['camera-access'],
-            callback: (error) => {
-                if (error) {
-                    message("WebXR Immersive AR failed to start: " + error.message);
-                    throw new Error(error.message);
-                }
+        let options = {};
 
-                gl = canvas.getContext('webgl2', { xrCompatible: true });
-                glBinding = new XRWebGLBinding(app.xr.session, gl);
-
-                initializeGLCube(gl);
-
-                app.xr.session.updateRenderState({ baseLayer: new XRWebGLLayer(app.xr.session, gl) });
-                app.xr.session.requestReferenceSpace('local').then((refSpace) => {
-                    xrRefSpace = refSpace;
-                });
+        if (activeArMode === ARMODES.oscp) {
+            options = {
+                optionalFeatures: ['camera-access'],
+                callback: oscpModeCallback
             }
+            camera.camera.startXr(pc.XRTYPE_AR, pc.XRSPACE_LOCALFLOOR, options);
+        } else if (activeArMode === ARMODES.marker) {
+            options = {
+                imageTracking: true,
+                callback: markerModeCallback
+            }
+            setupMarkers()
+                .then(() => camera.camera.startXr(pc.XRTYPE_AR, pc.XRSPACE_LOCALFLOOR, options));
+        }
+    }
+
+    /**
+     * Load marker and configure marker tracking.
+     */
+    function setupMarkers() {
+        return fetch(`/media/${$currentMarkerImage}`)
+            .then(response => response.blob())
+            .then(blob => {
+                trackedImage = app.xr.imageTracking.add(blob, $currentMarkerImageWidth);
+            })
+            .catch(error => console.log(error));
+    }
+
+    /**
+     * Executed when XRSession was successfully created for AR mode 'marker'.
+     */
+    function markerModeCallback(error) {
+        if (error) {
+            message("WebXR Immersive AR failed to start: " + error.message);
+            throw new Error(error.message);
+        }
+
+        app.xr.session.requestReferenceSpace('local').then((refSpace) => {
+            xrRefSpace = refSpace;
+        });
+    }
+
+    /**
+     * Executed when XRSession was successfully created for AR mode 'oscp'.
+     */
+    function oscpModeCallback(error) {
+        if (error) {
+            message("WebXR Immersive AR failed to start: " + error.message);
+            throw new Error(error.message);
+        }
+
+        gl = canvas.getContext('webgl2', {xrCompatible: true});
+        glBinding = new XRWebGLBinding(app.xr.session, gl);
+
+        initializeGLCube(gl);
+
+        app.xr.session.updateRenderState({baseLayer: new XRWebGLLayer(app.xr.session, gl)});
+        app.xr.session.requestReferenceSpace('local').then((refSpace) => {
+            xrRefSpace = refSpace;
         });
     }
 
@@ -150,10 +191,10 @@
      */
     function createModel() {
         const cube = new pc.Entity();
-        cube.addComponent("model", { type: "box" });
-        cube.setLocalScale(0.5, 0.5, 0.5);
-        cube.translate(0.5, 0.25, 0.5);
-        app.root.addChild(cube);
+        cube.addComponent("model", {type: "box"});
+        cube.setLocalScale(0.1, 0.1, 0.1);
+        cube.setLocalPosition(-0.25, 0.0, 0.0);
+        return cube;
     }
 
     /**
@@ -172,35 +213,66 @@
     function onUpdate(frame) {
         const pose = frame.getViewerPose(xrRefSpace);
 
-        if (pose) {
+        if (activeArMode === ARMODES.oscp && pose) {
             hasPose = true;
-
-            gl.bindFramebuffer(gl.FRAMEBUFFER, app.xr.session.renderState.baseLayer.framebuffer);
-
-            for (let view of pose.views) {
-                let viewport = app.xr.session.renderState.baseLayer.getViewport(view);
-                gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
-
-                const cameraTexture = glBinding.getCameraImage(frame, pose.cameraViews[0]);
-
-                if (captureImage) {
-                    captureImage = false;
-
-                    const image = createImageFromTexture(gl, cameraTexture, viewport.width, viewport.height);
-
-                    // To verify if the image was captured correctly
-                    const img = new Image();
-                    img.src = image;
-                    document.body.appendChild(img);
-
-                    localize(pose, image, viewport.width, viewport.height);
-                }
-
-                drawScene(gl, cameraTexture, view);
-            }
+            handlePose(pose, frame);
+        } else if (activeArMode === ARMODES.marker) {
+            handleMarker();
         }
     }
 
+    /**
+     * Handles update loop when marker mode is used.
+     */
+    function handleMarker() {
+        if (trackedImage && trackedImage.tracking) {
+            if (!trackedImageObject) {
+                trackedImageObject = createModel();
+                app.root.addChild(trackedImageObject);
+            }
+
+            trackedImageObject.setPosition(trackedImage.getPosition());
+            trackedImageObject.setRotation(trackedImage.getRotation());
+        }
+    }
+
+    /**
+     * Handles update loop when ARCloud mode is used.
+     *
+     * @param pose      The pose of the device as reported by the XRFrame
+     * @param frame     The XRFrame provided to the update loop
+     */
+    function handlePose(pose, frame) {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, app.xr.session.renderState.baseLayer.framebuffer);
+
+        for (let view of pose.views) {
+            let viewport = app.xr.session.renderState.baseLayer.getViewport(view);
+            gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+
+            const cameraTexture = glBinding.getCameraImage(frame, pose.cameraViews[0]);
+
+            if (captureImage) {
+                captureImage = false;
+
+                const image = createImageFromTexture(gl, cameraTexture, viewport.width, viewport.height);
+                localize(pose, image, viewport.width, viewport.height);
+            }
+
+            drawScene(gl, cameraTexture, view);
+        }
+    }
+
+    /**
+     * Does the actual localisation with the image shot before and the preselected GeoPose service.
+     *
+     * When request is successful, content reported from the content discovery server will be placed. When
+     * request is unsuccessful, user is offered to localize again or use a marker image as an alternative.
+     *
+     * @param pose  XRPose      Pose of the device as reported by the XRFrame
+     * @param image  string     Camera image to use for localisation
+     * @param width  Number     Width of the camera image
+     * @param height  Number    Height of the camera image
+     */
     function localize(pose, image, width, height) {
         const geoPoseRequest = new GeoPoseRequest(uuidv4())
             .addCameraData(IMAGEFORMAT.JPG, [width, height], image.split(',')[1], 0, new ImageOrientation(false, 0))
@@ -208,13 +280,23 @@
 
         // Services haven't implemented recent changes to the protocol yet
         validateRequest(false);
+
+        const start = Date.now();
         sendRequest(`${$availableContentServices[0].url}/${objectEndpoint}`, JSON.stringify(geoPoseRequest))
             .then(data => {
+                console.log('Duration', Date.now() - start);
+
                 isLocalized = true;
+
+                // TODO: Delay for a moment to let final localisation message be visisble
                 showFooter = false;
+
+                console.log('successfully localized!!', data)
             })
             .catch(error => {
                 isLocalizing = false;
+
+                // TODO: Offer marker alternative
 
                 console.error(error);
             });
@@ -243,28 +325,22 @@
 
         text-align: center;
     }
-
-    .spinner {
-        height: 50px;
-    }
 </style>
 
 
 <canvas id='application' bind:this={canvas}></canvas>
 <aside bind:this={overlay} on:beforexrselect={(event) => event.preventDefault()}>
     {#if showFooter}
-    <footer in:fade out:fade={{delay: 1000}}>
-        {#if !hasPose}
-            <p>{$movePhoneMessage}</p>
-        {:else if isLocalizing}
-            <img class="spinner" src="/media/spinner.svg" />
-            <p>localizing</p>
-        {:else if hasPose && !isLocalized}
-            <p>{$localizeMessage}</p>
-            <button on:click={startLocalisation}>{$localizeLabel}</button>
-        {:else if isLocalized}
-            <p>successfully localized</p>
-        {/if}
-    </footer>
+        <footer>
+            {#if activeArMode === ARMODES.oscp}
+            <ArCloudOverlay hasPose="{hasPose}" isLocalizing="{isLocalizing}" isLocalized="{isLocalized}"
+                        on:startLocalisation={startLocalisation} />
+            {:else if activeArMode === ARMODES.marker}
+                <MarkerOverlay />
+            {:else}
+                <p>Somethings wrong...</p>
+                <p>Apologies.</p>
+            {/if}
+        </footer>
     {/if}
 </aside>
