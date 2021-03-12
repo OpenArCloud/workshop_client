@@ -5,3 +5,5 @@ node_modules
 /.env
 /snowpack.crt
 /snowpack.key
+
+**/*.js.map

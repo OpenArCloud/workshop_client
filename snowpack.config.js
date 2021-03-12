@@ -17,10 +17,10 @@ module.exports = {
     // }
   ],
   optimize: {
-    bundle: true,
+    // bundle: true,
   },
   packageOptions: {
-    //source: "remote"
+    // source: "remote"
   },
   devOptions: {
     secure: true,
@@ -34,6 +34,7 @@ module.exports = {
     '@components': './src/components',
     '@core': './src/core',
     '@public': './public',
-    '@src': './src'
+    '@src': './src',
+    '@thirdparty': './src/third-party'
   }
 };

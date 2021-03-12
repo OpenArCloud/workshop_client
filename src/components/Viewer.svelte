@@ -9,7 +9,7 @@
 <script>
     import { createEventDispatcher } from 'svelte';
 
-    import * as pc from 'playcanvas';
+    import '@thirdparty/playcanvas.min.js';
     import {v4 as uuidv4} from 'uuid';
 
     import { sendRequest, objectEndpoint, validateRequest } from 'gpp-access';
@@ -19,9 +19,11 @@
 
     import { initialLocation, availableContentServices, currentMarkerImage,
         currentMarkerImageWidth } from '@src/stateStore';
-    import { createImageFromTexture, ARMODES } from "@src/core/common";
+    import { createImageFromTexture, wait, ARMODES } from "@core/common";
+    import { createModel, createPlaceholder } from '@core/modelTemplates';
+    import { calculateLocalLocation } from '@core/locationTools';
 
-    import { initializeGLCube, drawScene } from '@src/core/texture';
+    import { initializeGLCube, drawScene } from '@core/texture';
     import ArCloudOverlay from "./dom-overlays/ArCloudOverlay.svelte";
     import MarkerOverlay from "./dom-overlays/MarkerOverlay.svelte";
 
@@ -66,7 +68,6 @@
 
         app.xr.on('start', () => {
             message("Immersive AR session has started");
-            createModel();
         });
 
         app.xr.on('update', (frame) => {
@@ -126,12 +127,13 @@
 
         if (activeArMode === ARMODES.oscp) {
             options = {
-                optionalFeatures: ['camera-access'],
+                requiredFeatures: ['dom-overlay', 'camera-access'],
                 callback: oscpModeCallback
             }
             camera.camera.startXr(pc.XRTYPE_AR, pc.XRSPACE_LOCALFLOOR, options);
         } else if (activeArMode === ARMODES.marker) {
             options = {
+                requiredFeatures: ['image-tracking'],
                 imageTracking: true,
                 callback: markerModeCallback
             }
@@ -184,17 +186,6 @@
         app.xr.session.requestReferenceSpace('local').then((refSpace) => {
             xrRefSpace = refSpace;
         });
-    }
-
-    /**
-     * Simple sample model to place for tests.
-     */
-    function createModel() {
-        const cube = new pc.Entity();
-        cube.addComponent("model", {type: "box"});
-        cube.setLocalScale(0.1, 0.1, 0.1);
-        cube.setLocalPosition(-0.25, 0.0, 0.0);
-        return cube;
     }
 
     /**
@@ -287,11 +278,13 @@
                 console.log('Duration', Date.now() - start);
 
                 isLocalized = true;
-
-                // TODO: Delay for a moment to let final localisation message be visisble
-                showFooter = false;
+                wait(1000).then(showFooter = false);
 
                 console.log('successfully localized!!', data)
+
+                if ('scrs' in data) {
+                    placeContent(data.scrs, pose);
+                }
             })
             .catch(error => {
                 isLocalizing = false;
@@ -300,6 +293,31 @@
 
                 console.error(error);
             });
+    }
+
+    /**
+     *  Places the content provided by a call to a Spacial Content Discovery server.
+     *
+     * @param scr  SCR Spatial      Content Record with the result from the server request
+     * @param pose XRPose      The pose of the device when localisation was started
+     */
+    function placeContent(scr, pose) {
+        scr.forEach(record => {
+            // content.type     -- defines what to display
+            // content.keywords?        -- specifies display from a selection
+            // content.geopose.pose     -- position
+
+
+            // This is difficult to generalize, because there are no types defined yet.
+            if (record.content.type === 'placeholder') {
+                if ('keywords' in record.content) {
+                    const position = calculateLocalLocation(pose, record.content.geopose.pose);
+                    const placeholder = createPlaceholder(record.content.keywords);
+                    placeholder.setLocalPosition(position)
+                    app.root.addChild(placeholder);
+                }
+            }
+        })
     }
 </script>
 

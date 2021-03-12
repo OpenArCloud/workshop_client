@@ -36,6 +36,14 @@ export const SSR = {
     timestamp: 0
 }
 
+export const SCR = {
+    id: '',
+    type: '',
+    content: {},
+    tenant: '',
+    timestamp: 0
+}
+
 /**
  * Empty service value, contained in the services array of an SSR.
  *
@@ -168,5 +176,16 @@ export function createImageFromTexture(gl, texture, width, height) {
 function flip_index (kPel, width, height) {
     var i     = Math.floor (kPel / width) ;
     var j     = kPel % width ;
+
     return height * width - (i + 1) * width + j ;
+}
+
+/**
+ * Utility function used to delay the execution of the next expression delay milliseconds.
+ *
+ * @param delay
+ * @returns {Promise<null>}
+ */
+export function wait(delay) {
+    return new Promise(resolve => setTimeout(resolve, delay));
 }

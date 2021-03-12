@@ -28,14 +28,13 @@
     "@snowpack/plugin-svelte": "^3.5.2",
     "@snowpack/web-test-runner-plugin": "^0.2.0",
     "@testing-library/svelte": "^3.0.0",
-    "@web/test-runner": "^0.12.0",
+    "@web/test-runner": "^0.12.16",
     "chai": "^4.3.3",
     "snowpack": "^3.0.13"
   },
   "dependencies": {
     "gpp-access": "0.0.2",
-    "h3-js": "^3.7.0",
-    "playcanvas": "^1.39.4",
+    "h3-js": "^3.7.1",
     "ssd-access": "^0.1.0",
     "svelte": "^3.35.0"
   }
