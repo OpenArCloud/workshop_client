@@ -18,10 +18,10 @@
     import { IMAGEFORMAT } from 'gpp-access/GppGlobals.js';
 
     import { initialLocation, availableContentServices, currentMarkerImage,
-        currentMarkerImageWidth } from '@src/stateStore';
+        currentMarkerImageWidth, selectedGeoPoseService } from '@src/stateStore';
     import { createImageFromTexture, wait, ARMODES } from "@core/common";
     import { createModel, createPlaceholder } from '@core/modelTemplates';
-    import { calculateLocalLocation } from '@core/locationTools';
+    import { calculateLocalLocation, fakeLocationResult } from '@core/locationTools';
 
     import { initializeGLCube, drawScene } from '@core/texture';
     import ArCloudOverlay from "./dom-overlays/ArCloudOverlay.svelte";
@@ -45,6 +45,7 @@
     let xrRefSpace = null;
     let gl = null;
     let glBinding = null;
+    let cameraShader = null;
 
     let trackedImage, trackedImageObject;
 
@@ -180,7 +181,7 @@
         gl = canvas.getContext('webgl2', {xrCompatible: true});
         glBinding = new XRWebGLBinding(app.xr.session, gl);
 
-        initializeGLCube(gl);
+        // cameraShader = initializeGLCube(gl);
 
         app.xr.session.updateRenderState({baseLayer: new XRWebGLLayer(app.xr.session, gl)});
         app.xr.session.requestReferenceSpace('local').then((refSpace) => {
@@ -240,16 +241,26 @@
             let viewport = app.xr.session.renderState.baseLayer.getViewport(view);
             gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 
-            const cameraTexture = glBinding.getCameraImage(frame, pose.cameraViews[0]);
-
             if (captureImage) {
                 captureImage = false;
 
+                cameraShader = initializeGLCube(gl);
+                const cameraTexture = glBinding.getCameraImage(frame, pose.cameraViews[0]);
+                drawScene(gl, cameraTexture, view);
+
                 const image = createImageFromTexture(gl, cameraTexture, viewport.width, viewport.height);
+
+                // To verify if the image was captured correctly
+                // const img = new Image();
+                // img.src = image;
+                // document.body.appendChild(img);
+
+                gl.deleteProgram(cameraShader);
+                cameraShader = null;
+
+                // TODO: Make this a promise
                 localize(pose, image, viewport.width, viewport.height);
             }
-
-            drawScene(gl, cameraTexture, view);
         }
     }
 
@@ -283,7 +294,7 @@
                 console.log('successfully localized!!', data)
 
                 if ('scrs' in data) {
-                    placeContent(data.scrs, pose);
+                    placeContent(data.geopose.pose, data.scrs, pose);
                 }
             })
             .catch(error => {
@@ -293,31 +304,63 @@
 
                 console.error(error);
             });
+
+/*
+        // Fake data for development
+        {
+            console.log('fake localisation');
+            isLocalized = true;
+            wait(1000).then(showFooter = false);
+            placeContent(fakeLocationResult.geopose.pose, fakeLocationResult.scrs, pose)
+        }
+*/
     }
 
     /**
      *  Places the content provided by a call to a Spacial Content Discovery server.
      *
+     * @param globalPose  GeoPose
      * @param scr  SCR Spatial      Content Record with the result from the server request
-     * @param pose XRPose      The pose of the device when localisation was started
+     * @param localPose XRPose      The pose of the device when localisation was started
      */
-    function placeContent(scr, pose) {
+    function placeContent(globalPose, scr, localPose) {
+        console.log(localPose);
+
+        const localPosition = localPose.transform.position;
+
         scr.forEach(record => {
-            // content.type     -- defines what to display
-            // content.keywords?        -- specifies display from a selection
-            // content.geopose.pose     -- position
-
-
             // This is difficult to generalize, because there are no types defined yet.
             if (record.content.type === 'placeholder') {
-                if ('keywords' in record.content) {
-                    const position = calculateLocalLocation(pose, record.content.geopose.pose);
-                    const placeholder = createPlaceholder(record.content.keywords);
-                    placeholder.setLocalPosition(position)
-                    app.root.addChild(placeholder);
+                if ($availableContentServices[0].url.includes('augmented.city')) {
+                    record.content.geopose.pose = flipLatLon(record.content.geopose.pose);
                 }
+
+                // Augmented City special path for the GeoPose. Should be just 'record.content.geopose'
+                const contentPosition = calculateLocalLocation(globalPose, record.content.geopose.pose);
+                const placeholder = createPlaceholder(record.content.keywords);
+                placeholder.setPosition(
+                    contentPosition.x + localPosition.x,
+                    contentPosition.y + localPosition.y,
+                    contentPosition.z + localPosition.z);
+                // TODO: placeholder.setRotation(0, 0, 0);
+                app.root.addChild(placeholder);
+
+
+                console.log(contentPosition);
             }
         })
+    }
+
+
+    /*
+        Augmented city does return lat lon mixed up right now
+     */
+    function flipLatLon(pose) {
+        const temp = pose.latitude;
+        pose.latitude = pose.longitude;
+        pose.longitude = temp;
+
+        return pose;
     }
 </script>
 

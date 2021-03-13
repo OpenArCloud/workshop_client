@@ -44,6 +44,13 @@ export const SCR = {
     timestamp: 0
 }
 
+export const GEOPOSE = {
+    longitude: 0,
+    latitude: 0,
+    ellipsoidHeight: 0,
+    quaternion: []
+}
+
 /**
  * Empty service value, contained in the services array of an SSR.
  *

@@ -32,6 +32,6 @@ export function createModel() {
 export function createPlaceholder(keywords) {
     const placeholder = new pc.Entity();
     placeholder.addComponent('model', {type: 'sphere'});
-    placeholder.setLocalScale(0.2, 0.2, 0.2);
+    placeholder.setLocalScale(2, 2, 2);
     return placeholder;
 }

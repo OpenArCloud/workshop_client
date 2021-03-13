@@ -72,6 +72,8 @@ export function initializeGLCube(gl) {
     // objects we'll be drawing.
     buffers = initBuffers(gl);
     texture = loadTexture(gl);
+
+    return shaderProgram;
 }
 
 // Initialize the buffers we'll need. For this demo, we just
