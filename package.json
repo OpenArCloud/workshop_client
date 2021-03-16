@@ -35,6 +35,7 @@
   "dependencies": {
     "chai": "^4.2.0",
     "geodesy": "^2.2.1",
+    "gl-matrix": "^3.3.0",
     "gpp-access": "0.0.2",
     "h3-js": "^3.7.1",
     "mocha": "^8.2.1",

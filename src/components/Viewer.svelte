@@ -21,7 +21,7 @@
         currentMarkerImageWidth, selectedGeoPoseService } from '@src/stateStore';
     import { createImageFromTexture, wait, ARMODES } from "@core/common";
     import { createModel, createPlaceholder } from '@core/modelTemplates';
-    import { calculateLocalLocation, fakeLocationResult } from '@core/locationTools';
+    import { calculateDistance, fakeLocationResult, calculateRotation, toDegrees } from '@core/locationTools';
 
     import { initializeGLCube, drawScene } from '@core/texture';
     import ArCloudOverlay from "./dom-overlays/ArCloudOverlay.svelte";
@@ -43,6 +43,8 @@
     let showFooter = false, hasPose = false, isLocalizing = false, isLocalized = false;
 
     let xrRefSpace = null;
+    let xrViewerSpace = null;
+
     let gl = null;
     let glBinding = null;
     let cameraShader = null;
@@ -187,6 +189,9 @@
         app.xr.session.requestReferenceSpace('local').then((refSpace) => {
             xrRefSpace = refSpace;
         });
+        app.xr.session.requestReferenceSpace('viewer').then((refSpace) => {
+            xrViewerSpace = refSpace;
+        });
     }
 
     /**
@@ -203,11 +208,11 @@
      * @param frame
      */
     function onUpdate(frame) {
-        const pose = frame.getViewerPose(xrRefSpace);
+        const localPose = frame.getViewerPose(xrRefSpace);
 
-        if (activeArMode === ARMODES.oscp && pose) {
+        if (activeArMode === ARMODES.oscp && localPose) {
             hasPose = true;
-            handlePose(pose, frame);
+            handlePose(localPose, frame);
         } else if (activeArMode === ARMODES.marker) {
             handleMarker();
         }
@@ -231,13 +236,13 @@
     /**
      * Handles update loop when ARCloud mode is used.
      *
-     * @param pose      The pose of the device as reported by the XRFrame
+     * @param localPose      The pose of the device as reported by the XRFrame
      * @param frame     The XRFrame provided to the update loop
      */
-    function handlePose(pose, frame) {
+    function handlePose(localPose, frame) {
         gl.bindFramebuffer(gl.FRAMEBUFFER, app.xr.session.renderState.baseLayer.framebuffer);
 
-        for (let view of pose.views) {
+        for (let view of localPose.views) {
             let viewport = app.xr.session.renderState.baseLayer.getViewport(view);
             gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 
@@ -245,7 +250,7 @@
                 captureImage = false;
 
                 cameraShader = initializeGLCube(gl);
-                const cameraTexture = glBinding.getCameraImage(frame, pose.cameraViews[0]);
+                const cameraTexture = glBinding.getCameraImage(frame, localPose.cameraViews[0]);
                 drawScene(gl, cameraTexture, view);
 
                 const image = createImageFromTexture(gl, cameraTexture, viewport.width, viewport.height);
@@ -255,11 +260,14 @@
                 // img.src = image;
                 // document.body.appendChild(img);
 
+                // WebGL shader installed before to get the camera image.
                 gl.deleteProgram(cameraShader);
                 cameraShader = null;
 
+                const viewerPose = frame.getViewerPose(xrViewerSpace);
+
                 // TODO: Make this a promise
-                localize(pose, image, viewport.width, viewport.height);
+                localize(localPose, viewerPose, image, viewport.width, viewport.height);
             }
         }
     }
@@ -270,12 +278,13 @@
      * When request is successful, content reported from the content discovery server will be placed. When
      * request is unsuccessful, user is offered to localize again or use a marker image as an alternative.
      *
-     * @param pose  XRPose      Pose of the device as reported by the XRFrame
+     * @param localPose  XRPose      Pose of the device as reported by the XRFrame
+     * @param viewerPose  XRPose        The pose of the device when localisation was started in viewer reference space
      * @param image  string     Camera image to use for localisation
      * @param width  Number     Width of the camera image
      * @param height  Number    Height of the camera image
      */
-    function localize(pose, image, width, height) {
+    function localize(localPose, viewerPose, image, width, height) {
         const geoPoseRequest = new GeoPoseRequest(uuidv4())
             .addCameraData(IMAGEFORMAT.JPG, [width, height], image.split(',')[1], 0, new ImageOrientation(false, 0))
             .addLocationData($initialLocation.lat, $initialLocation.lon, 0, 0, 0, 0, 0);
@@ -294,7 +303,7 @@
                 console.log('successfully localized!!', data)
 
                 if ('scrs' in data) {
-                    placeContent(data.geopose.pose, data.scrs, pose);
+                    placeContent(localPose, viewerPose, data.geopose.pose, data.scrs);
                 }
             })
             .catch(error => {
@@ -305,13 +314,13 @@
                 console.error(error);
             });
 
-/*
         // Fake data for development
+/*
         {
             console.log('fake localisation');
             isLocalized = true;
             wait(1000).then(showFooter = false);
-            placeContent(fakeLocationResult.geopose.pose, fakeLocationResult.scrs, pose)
+            placeContent(localPose, viewerPose, fakeLocationResult.geopose.pose, fakeLocationResult.scrs)
         }
 */
     }
@@ -319,48 +328,42 @@
     /**
      *  Places the content provided by a call to a Spacial Content Discovery server.
      *
-     * @param globalPose  GeoPose
+     * @param localPose XRPose      The pose of the device when localisation was started in local reference space
+     * @param viewerPose  XRPose        The pose of the device when localisation was started in viewer reference space
+     * @param globalPose  GeoPose       The global GeoPose as returned from GeoPose service
      * @param scr  SCR Spatial      Content Record with the result from the server request
-     * @param localPose XRPose      The pose of the device when localisation was started
      */
-    function placeContent(globalPose, scr, localPose) {
-        console.log(localPose);
-
+    function placeContent(localPose, viewerPose, globalPose, scr) {
         const localPosition = localPose.transform.position;
 
+        console.log(localPose);
+        console.log(viewerPose);
+
         scr.forEach(record => {
+            // Augmented City special path for the GeoPose. Should be just 'record.content.geopose'
+            const objectPose = record.content.geopose.pose;
+
             // This is difficult to generalize, because there are no types defined yet.
             if (record.content.type === 'placeholder') {
                 if ($availableContentServices[0].url.includes('augmented.city')) {
-                    record.content.geopose.pose = flipLatLon(record.content.geopose.pose);
+                    [objectPose.longitude, objectPose.latitude] = [objectPose.latitude, objectPose.longitude];
                 }
 
-                // Augmented City special path for the GeoPose. Should be just 'record.content.geopose'
-                const contentPosition = calculateLocalLocation(globalPose, record.content.geopose.pose);
+                const contentPosition = calculateDistance(globalPose, objectPose);
                 const placeholder = createPlaceholder(record.content.keywords);
-                placeholder.setPosition(
-                    contentPosition.x + localPosition.x,
-                    contentPosition.y + localPosition.y,
-                    contentPosition.z + localPosition.z);
-                // TODO: placeholder.setRotation(0, 0, 0);
+                placeholder.setPosition(contentPosition.x - localPosition.x,contentPosition.y - localPosition.y,
+                    contentPosition.z - localPosition.z);
+
+                const rotation = calculateRotation(globalPose.quaternion, localPose.transform.orientation);
+                placeholder.rotate(toDegrees(rotation[0]), toDegrees(rotation[1]), toDegrees(rotation[2]));
+
                 app.root.addChild(placeholder);
 
 
                 console.log(contentPosition);
+                console.log(rotation);
             }
         })
-    }
-
-
-    /*
-        Augmented city does return lat lon mixed up right now
-     */
-    function flipLatLon(pose) {
-        const temp = pose.latitude;
-        pose.latitude = pose.longitude;
-        pose.longitude = temp;
-
-        return pose;
     }
 </script>
 

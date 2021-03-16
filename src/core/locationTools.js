@@ -8,10 +8,11 @@
  */
 
 import LatLon from 'geodesy/latlon-ellipsoidal-vincenty.js';
+import { quat, vec3 } from 'gl-matrix';
 
 
-export const toRadians = (degrees) => degrees * (Math.PI / 180);
-export const toDegree = (radians) => radians / (Math.PI / 180);
+export const toRadians = (degrees) => degrees * Math.PI / 180;
+export const toDegrees = (radians) => radians / Math.PI / 180;
 
 
 /*
@@ -150,22 +151,44 @@ export const fakeLocationResult = {
 
 
 /**
- *  Calculates the local position of a provided GeoPose in relation to the provided local reference pose.
+ *  Calculates the relative distance of two geodesic locations.
+ *
+ *  Used to calculate the relative distance between the device location at the moment of localisation and the
+ *  location of an object as received from content discovery service.
  *
  * @param localisationPose  XRPose      Local pose provided by the XRSession for the latest localisation
  * @param objectPose  GeoPose       Global position as provided by a request to a Spatial Content Discovery server
- * @returns {number{}}      Local location of the global GeoPose relative to the provided local pose
+ * @returns {[x,y,z]}      Local location of the global GeoPose relative to the provided local pose
  */
-export function calculateLocalLocation(localisationPose, objectPose) {
-    const from = new LatLon( localisationPose.latitude, localisationPose.longitude );
-    const to = new LatLon( objectPose.latitude, objectPose.longitude );
+export function calculateDistance(localisationPose, objectPose) {
+    const centerPoint = new LatLon(localisationPose.latitude, localisationPose.longitude);
+    const latDiff = new LatLon( objectPose.latitude, localisationPose.longitude );
+    const lonDiff = new LatLon( localisationPose.latitude, objectPose.longitude );
 
-    const distance = from.distanceTo(to);
-    const bearing = from.initialBearingTo(to);
-
-    const xValue = distance * Math.cos(toRadians(bearing));
-    const yValue = distance * Math.sin(toRadians(bearing));
+    const xValue = centerPoint.distanceTo(lonDiff);
+    const yValue = centerPoint.distanceTo(latDiff);
 
     // TODO: Add y-value when receiving valid height value from GeoPose service
     return {x:xValue, y:0.0, z:-yValue};
+}
+
+
+/**
+ * Calculates the distance between two quaternions.
+ *
+ * Used to calculate the difference between the device rotation at the moment of localisation of the local and
+ * global poses.
+ *
+ * @param localisationQuaternion  Quaternion        Rotation
+ * @param localQuaternion
+ * @returns {[x,y,z]}
+ */
+export function calculateRotation(localisationQuaternion, localQuaternion) {
+    const lQuat = quat.fromValues(localisationQuaternion[0], localisationQuaternion[1], localisationQuaternion[2], localisationQuaternion[3]);
+    const oQuat = quat.fromValues(localQuaternion.x, localQuaternion.y, localQuaternion.z, localQuaternion.w);
+
+    const rotation = vec3.create();
+    quat.multiply(rotation, lQuat, oQuat);
+
+    return rotation;
 }
