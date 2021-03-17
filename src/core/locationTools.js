@@ -179,16 +179,89 @@ export function calculateDistance(localisationPose, objectPose) {
  * Used to calculate the difference between the device rotation at the moment of localisation of the local and
  * global poses.
  *
- * @param localisationQuaternion  Quaternion        Rotation
- * @param localQuaternion
- * @returns {[x,y,z]}
+ * @param localisationQuaternion  Quaternion        Rotation returned by a GeoPose service after localisation (Array)
+ * @param localQuaternion  Quaternion       Rotation reported from WebGL at the moment localisation was started
+ * @returns {{x, y, z, w}}
  */
 export function calculateRotation(localisationQuaternion, localQuaternion) {
-    const lQuat = quat.fromValues(localisationQuaternion[0], localisationQuaternion[1], localisationQuaternion[2], localisationQuaternion[3]);
-    const oQuat = quat.fromValues(localQuaternion.x, localQuaternion.y, localQuaternion.z, localQuaternion.w);
+    const global = quat.fromValues(localisationQuaternion[0], localisationQuaternion[1], localisationQuaternion[2], localisationQuaternion[3]);
+    const local = quat.fromValues(localQuaternion.x, localQuaternion.y, localQuaternion.z, localQuaternion.w);
 
-    const rotation = vec3.create();
-    quat.multiply(rotation, lQuat, oQuat);
+    const localInv = quat.create();
+    quat.invert(localInv , global);
 
-    return rotation;
+    const diff = quat.create();
+    quat.multiply(diff , global, localInv);
+
+    return diff;
+}
+
+
+/**
+ * Calculates the distance between two quaternions.
+ *
+ * Used to calculate the difference between the device rotation at the moment of localisation of the local and
+ * global poses.
+ *
+ * @param localisationQuaternion  Quaternion        Rotation returned by a GeoPose service after localisation (Array)
+ * @param localQuaternion  Quaternion       Rotation reported from WebGL at the moment localisation was started
+ * @returns {{x, y, z}}
+ */
+export function calculateEulerRotation(localisationQuaternion, localQuaternion) {
+    const diff = calculateRotation(localisationQuaternion, localQuaternion);
+
+    const euler = vec3.create();
+    getEuler(euler, diff);
+    return euler;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * Returns an euler angle representation of a quaternion.
+ *
+ * Taken from gl-matrix issue #329. Will be remove when added to gl-matrix
+ *
+ * @param  {vec3} out Euler angles, pitch-yaw-roll
+ * @param  {quat} mat Quaternion
+ * @return {vec3} out
+ */
+function getEuler(out, quat) {
+    let x = quat[0],
+        y = quat[1],
+        z = quat[2],
+        w = quat[3],
+        x2 = x * x,
+        y2 = y * y,
+        z2 = z * z,
+        w2 = w * w;
+    let unit = x2 + y2 + z2 + w2;
+    let test = x * w - y * z;
+    if (test > 0.499995 * unit) { //TODO: Use glmatrix.EPSILON
+        // singularity at the north pole
+        out[0] = Math.PI / 2;
+        out[1] = 2 * Math.atan2(y, x);
+        out[2] = 0;
+    } else if (test < -0.499995 * unit) { //TODO: Use glmatrix.EPSILON
+        // singularity at the south pole
+        out[0] = -Math.PI / 2;
+        out[1] = 2 * Math.atan2(y, x);
+        out[2] = 0;
+    } else {
+        out[0] = Math.asin(2 * (x * z - w * y));
+        out[1] = Math.atan2(2 * (x * w + y * z), 1 - 2 * (z2 + w2));
+        out[2] = Math.atan2(2 * (x * y + z * w), 1 - 2 * (y2 + z2));
+    }
+    // TODO: Return them as degrees and not as radians
+    return out;
 }

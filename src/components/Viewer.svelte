@@ -21,7 +21,7 @@
         currentMarkerImageWidth, selectedGeoPoseService } from '@src/stateStore';
     import { createImageFromTexture, wait, ARMODES } from "@core/common";
     import { createModel, createPlaceholder } from '@core/modelTemplates';
-    import { calculateDistance, fakeLocationResult, calculateRotation, toDegrees } from '@core/locationTools';
+    import { calculateDistance, fakeLocationResult, calculateEulerRotation, toDegrees } from '@core/locationTools';
 
     import { initializeGLCube, drawScene } from '@core/texture';
     import ArCloudOverlay from "./dom-overlays/ArCloudOverlay.svelte";
@@ -39,11 +39,10 @@
 
     let app;
 
-    let captureImage = false;
+    let doCaptureImage = false;
     let showFooter = false, hasPose = false, isLocalizing = false, isLocalized = false;
 
     let xrRefSpace = null;
-    let xrViewerSpace = null;
 
     let gl = null;
     let glBinding = null;
@@ -189,16 +188,13 @@
         app.xr.session.requestReferenceSpace('local').then((refSpace) => {
             xrRefSpace = refSpace;
         });
-        app.xr.session.requestReferenceSpace('viewer').then((refSpace) => {
-            xrViewerSpace = refSpace;
-        });
     }
 
     /**
      * Trigger localisation of the device globally using a GeoPose service.
      */
     function startLocalisation() {
-        captureImage = true;
+        doCaptureImage = true;
         isLocalizing = true;
     }
 
@@ -246,30 +242,40 @@
             let viewport = app.xr.session.renderState.baseLayer.getViewport(view);
             gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 
-            if (captureImage) {
-                captureImage = false;
+            if (doCaptureImage) {
+                doCaptureImage = false;
 
-                cameraShader = initializeGLCube(gl);
-                const cameraTexture = glBinding.getCameraImage(frame, localPose.cameraViews[0]);
-                drawScene(gl, cameraTexture, view);
-
-                const image = createImageFromTexture(gl, cameraTexture, viewport.width, viewport.height);
-
-                // To verify if the image was captured correctly
-                // const img = new Image();
-                // img.src = image;
-                // document.body.appendChild(img);
-
-                // WebGL shader installed before to get the camera image.
-                gl.deleteProgram(cameraShader);
-                cameraShader = null;
-
-                const viewerPose = frame.getViewerPose(xrViewerSpace);
-
-                // TODO: Make this a promise
-                localize(localPose, viewerPose, image, viewport.width, viewport.height);
+                const image = captureImage(frame, view, viewport, localPose.cameraViews[0]);
+                localize(localPose, image, viewport.width, viewport.height)
+                    // When localisation didn't already provide content, needs to be requested here
+                    .then(([geoPose, data]) => placeContent(localPose, geoPose, data));
             }
         }
+    }
+
+    /**
+     * Get the camera image from WebXR.
+     *
+     * @param frame  XRFrame        Provides access to the information needed in order to render a single frame of
+     *                              animation for an XRSession describing a VR or AR sccene
+     * @param view  XRView      Provides information describing a single view into the XR scene for a specific frame,
+     *                          providing orientation and position information for the viewpoint
+     * @param viewport  XRViewPort      Provides properties used to describe the size and position of the current
+     *                                  viewport within the XRWebGLLayer being used to render the 3D scene
+     * @param cameraView  WebGLTexture      The texture with the camera image
+     */
+    function captureImage(frame, view, viewport, cameraView) {
+        cameraShader = initializeGLCube(gl);
+        const cameraTexture = glBinding.getCameraImage(frame, cameraView);
+        drawScene(gl, cameraTexture, view);
+
+        const image = createImageFromTexture(gl, cameraTexture, viewport.width, viewport.height);
+
+        // WebGL shader was installed earlier to get the camera image rendered onto the texture
+        gl.deleteProgram(cameraShader);
+        cameraShader = null;
+
+        return image;
     }
 
     /**
@@ -279,65 +285,56 @@
      * request is unsuccessful, user is offered to localize again or use a marker image as an alternative.
      *
      * @param localPose  XRPose      Pose of the device as reported by the XRFrame
-     * @param viewerPose  XRPose        The pose of the device when localisation was started in viewer reference space
      * @param image  string     Camera image to use for localisation
      * @param width  Number     Width of the camera image
      * @param height  Number    Height of the camera image
      */
-    function localize(localPose, viewerPose, image, width, height) {
-        const geoPoseRequest = new GeoPoseRequest(uuidv4())
-            .addCameraData(IMAGEFORMAT.JPG, [width, height], image.split(',')[1], 0, new ImageOrientation(false, 0))
-            .addLocationData($initialLocation.lat, $initialLocation.lon, 0, 0, 0, 0, 0);
+    function localize(localPose, image, width, height) {
+        return new Promise((resolve, reject) => {
+            const geoPoseRequest = new GeoPoseRequest(uuidv4())
+                .addCameraData(IMAGEFORMAT.JPG, [width, height], image.split(',')[1], 0, new ImageOrientation(false, 0))
+                .addLocationData($initialLocation.lat, $initialLocation.lon, 0, 0, 0, 0, 0);
 
-        // Services haven't implemented recent changes to the protocol yet
-        validateRequest(false);
+            // Services haven't implemented recent changes to the protocol yet
+            validateRequest(false);
 
-        const start = Date.now();
-        sendRequest(`${$availableContentServices[0].url}/${objectEndpoint}`, JSON.stringify(geoPoseRequest))
-            .then(data => {
-                console.log('Duration', Date.now() - start);
+            sendRequest(`${$availableContentServices[0].url}/${objectEndpoint}`, JSON.stringify(geoPoseRequest))
+                .then(data => {
+                    isLocalized = true;
+                    wait(1000).then(showFooter = false);
 
+                    if ('scrs' in data) {
+                        resolve([data.geopose.pose, data.scrs]);
+                    }
+                })
+                .catch(error => {
+                    // TODO: Offer marker alternative
+                    isLocalizing = false;
+                    console.error(error);
+                    reject(error);
+                });
+
+/*
+            {
+                // Stored SCD response for development
+                console.log('fake localisation');
                 isLocalized = true;
                 wait(1000).then(showFooter = false);
-
-                console.log('successfully localized!!', data)
-
-                if ('scrs' in data) {
-                    placeContent(localPose, viewerPose, data.geopose.pose, data.scrs);
-                }
-            })
-            .catch(error => {
-                isLocalizing = false;
-
-                // TODO: Offer marker alternative
-
-                console.error(error);
-            });
-
-        // Fake data for development
-/*
-        {
-            console.log('fake localisation');
-            isLocalized = true;
-            wait(1000).then(showFooter = false);
-            placeContent(localPose, viewerPose, fakeLocationResult.geopose.pose, fakeLocationResult.scrs)
-        }
+                resolve([fakeLocationResult.geopose.pose, fakeLocationResult.scrs])
+            }
 */
+        });
     }
 
     /**
      *  Places the content provided by a call to a Spacial Content Discovery server.
      *
      * @param localPose XRPose      The pose of the device when localisation was started in local reference space
-     * @param viewerPose  XRPose        The pose of the device when localisation was started in viewer reference space
      * @param globalPose  GeoPose       The global GeoPose as returned from GeoPose service
      * @param scr  SCR Spatial      Content Record with the result from the server request
      */
-    function placeContent(localPose, viewerPose, globalPose, scr) {
+    function placeContent(localPose, globalPose, scr) {
         const localPosition = localPose.transform.position;
-
-        console.log(localPose);
-        console.log(viewerPose);
 
         scr.forEach(record => {
             // Augmented City special path for the GeoPose. Should be just 'record.content.geopose'
@@ -345,23 +342,15 @@
 
             // This is difficult to generalize, because there are no types defined yet.
             if (record.content.type === 'placeholder') {
-                if ($availableContentServices[0].url.includes('augmented.city')) {
-                    [objectPose.longitude, objectPose.latitude] = [objectPose.latitude, objectPose.longitude];
-                }
-
                 const contentPosition = calculateDistance(globalPose, objectPose);
                 const placeholder = createPlaceholder(record.content.keywords);
-                placeholder.setPosition(contentPosition.x - localPosition.x,contentPosition.y - localPosition.y,
-                    contentPosition.z - localPosition.z);
+                placeholder.setPosition(contentPosition.x + localPosition.x,contentPosition.y + localPosition.y,
+                    contentPosition.z + localPosition.z);
 
-                const rotation = calculateRotation(globalPose.quaternion, localPose.transform.orientation);
+                const rotation = calculateEulerRotation(globalPose.quaternion, localPose.transform.orientation);
                 placeholder.rotate(toDegrees(rotation[0]), toDegrees(rotation[1]), toDegrees(rotation[2]));
 
                 app.root.addChild(placeholder);
-
-
-                console.log(contentPosition);
-                console.log(rotation);
             }
         })
     }
