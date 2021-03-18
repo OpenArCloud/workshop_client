@@ -47,7 +47,10 @@
     let gl = null;
     let glBinding = null;
 
+    let USE_FAKE_LOCATION = true;
     let SHOW_CAPTURED_IMAGE = true;
+    let SHOW_LOCAL_AXES = true;
+
     let trackedImage, trackedImageObject;
 
 
@@ -87,7 +90,7 @@
             message("Immersive AR is " + (available ? 'available' : 'unavailable'));
             if (available && !app.xr.active) {
                 const camera = setupEnvironment();
-                startSession(camera);
+                startSession(camera); // TODO: camera should be called cameraNode
             }
         });
 
@@ -116,6 +119,10 @@
         light.translate(0, 10, 0);
         app.root.addChild(light);
 
+        if (SHOW_LOCAL_AXES) {
+            addAxes(app);
+        }
+
         return camera;
     }
 
@@ -130,14 +137,14 @@
         if (activeArMode === ARMODES.oscp) {
             options = {
                 requiredFeatures: ['dom-overlay', 'camera-access'],
-                callback: oscpModeCallback
+                callback: onXRSessionStartedOSCP
             }
             camera.camera.startXr(pc.XRTYPE_AR, pc.XRSPACE_LOCALFLOOR, options);
         } else if (activeArMode === ARMODES.marker) {
             options = {
                 requiredFeatures: ['image-tracking'],
                 imageTracking: true,
-                callback: markerModeCallback
+                callback: onXRSessionStartedMarker
             }
             setupMarkers()
                 .then(() => camera.camera.startXr(pc.XRTYPE_AR, pc.XRSPACE_LOCALFLOOR, options));
@@ -159,7 +166,7 @@
     /**
      * Executed when XRSession was successfully created for AR mode 'marker'.
      */
-    function markerModeCallback(error) {
+    function onXRSessionStartedMarker(error) {
         if (error) {
             message("WebXR Immersive AR failed to start: " + error.message);
             throw new Error(error.message);
@@ -173,7 +180,7 @@
     /**
      * Executed when XRSession was successfully created for AR mode 'oscp'.
      */
-    function oscpModeCallback(error) {
+    function onXRSessionStartedOSCP(error) {
         if (error) {
             message("WebXR Immersive AR failed to start: " + error.message);
             throw new Error(error.message);
@@ -297,6 +304,8 @@
      */
     function localize(localPose, image, width, height) {
         return new Promise((resolve, reject) => {
+            if (!USE_FAKE_LOCATION) {
+
             const geoPoseRequest = new GeoPoseRequest(uuidv4())
                 .addCameraData(IMAGEFORMAT.JPG, [width, height], image.split(',')[1], 0, new ImageOrientation(false, 0))
                 .addLocationData($initialLocation.lat, $initialLocation.lon, 0, 0, 0, 0, 0);
@@ -320,15 +329,15 @@
                     reject(error);
                 });
 
-/*
-            {
+
+            } else {
                 // Stored SCD response for development
                 console.log('fake localisation');
                 isLocalized = true;
                 wait(1000).then(showFooter = false);
                 resolve([fakeLocationResult.geopose.pose, fakeLocationResult.scrs])
             }
-*/
+
         });
     }
 
@@ -346,6 +355,12 @@
             // Augmented City special path for the GeoPose. Should be just 'record.content.geopose'
             const objectPose = record.content.geopose.pose;
 
+            if (USE_FAKE_LOCATION) {
+                if ($availableContentServices[0].url.includes('augmented.city')) {
+                        [objectPose.longitude, objectPose.latitude] = [objectPose.latitude, objectPose.longitude];
+                }
+            }
+
             // This is difficult to generalize, because there are no types defined yet.
             if (record.content.type === 'placeholder') {
                 const contentPosition = calculateDistance(globalPose, objectPose);
@@ -356,10 +371,38 @@
                 const rotation = calculateEulerRotation(globalPose.quaternion, localPose.transform.orientation);
                 placeholder.rotate(toDegrees(rotation[0]), toDegrees(rotation[1]), toDegrees(rotation[2]));
 
+                console.log("placeholder at: " + contentPosition.x + ", " + contentPosition.y + ", " +  contentPosition.z);
                 app.root.addChild(placeholder);
             }
         })
     }
+    
+    //DEBUG: show local coordinate system by primitive objcects
+    function addAxes(app) {
+        // DEBUG: add something small at the positive X, Y, Z:
+        const objX = createObject("box", new pc.Color(1, 0, 0));
+        objX.setPosition(1, 0, 0);
+        app.root.addChild(objX);
+        const objY = createObject("sphere", new pc.Color(0, 1, 0));
+        objY.setPosition(0, 1, 0);
+        app.root.addChild(objY);
+        const objZ = createObject("cone", new pc.Color(0, 0, 1));
+        objZ.setPosition(0, 0, 1);
+        app.root.addChild(objZ);
+
+        let obj0 = createObject("box", new pc.Color(1, 0, 0));
+        obj0.setLocalScale(0.01, 0.01, 0.01);
+        obj0.setPosition(0, 0, 0);
+        app.root.addChild(obj0);
+    }
+    function createObject(type, color) {
+        let entity = new pc.Entity();
+        entity.addComponent("model", {type: type});
+        entity.setLocalScale(0.1, 0.1, 0.1);
+        return entity;
+    }
+
+
 </script>
 
 
