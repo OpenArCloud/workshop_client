@@ -10,7 +10,7 @@
 
 import { readable, writable, derived } from 'svelte/store';
 
-import { LOCATIONINFO, SERVICE, ARMODES } from "./core/common.js";
+import { LOCATIONINFO, SERVICE, ARMODES, GEOPOSE, LOCALPOSE } from "./core/common.js";
 
 
 /**
@@ -73,6 +73,7 @@ export const initialLocation = writable({
     h3Index: 0,
     lat: 0,
     lon: 0,
+    countryCode: '',
     regionCode: ''
 });
 
@@ -128,6 +129,13 @@ export const availableContentServices = derived(ssr, ($ssr, set) => {
  * @type {Writable<SERVICE>}
  */
 export const selectedGeoPoseService = writable('none');
+
+
+export const recentLocalisation = writable({
+    geopose: {},
+    localpose: {}
+})
+
 
 
 /**

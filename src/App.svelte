@@ -11,15 +11,16 @@
 
     import { getServicesAtLocation } from 'ssd-access';
 
-    import { getCurrentLocation, ARMODES } from '@src/core/common.js'
+    import { ARMODES } from '@src/core/common'
+    import { getCurrentLocation } from '@src/core/locationTools'
 
     import Dashboard from '@components/Dashboard.svelte';
     import Overlay from '@components/Overlay.svelte'
     import Viewer from '@components/Viewer.svelte';
 
-    import { arIsAvailable, showDashboard, hasIntroSeen, initialLocation, ssr, arMode } from './stateStore.js';
+    import { arIsAvailable, showDashboard, hasIntroSeen, initialLocation, ssr, arMode } from './stateStore';
     import { info, intro, arOkMessage, noArMessage, outro, startedOkLabel, doitOkLabel,
-        markerInfo} from './contentStore.js';
+        markerInfo} from './contentStore';
 
 
     let showWelcome, showOutro, showMarkerInfo;

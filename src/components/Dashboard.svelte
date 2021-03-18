@@ -13,7 +13,7 @@
 
     import { showDashboard, initialLocation, availableGeoPoseServices, availableContentServices,
         selectedGeoPoseService, selectedContentService, arMode, currentMarkerImage,
-        currentMarkerImageWidth } from '@src/stateStore';
+        currentMarkerImageWidth, recentLocalisation } from '@src/stateStore';
 
     import { ARMODES } from '@core/common';
 
@@ -35,7 +35,9 @@
 <dl>
     <dt>H3Index</dt>
     <dd>{$initialLocation.h3Index}</dd>
-    <dt>Region code</dt>
+    <dt>Country</dt>
+    <dd>{$initialLocation.countryCode}</dd>
+    <dt>OSCP Region</dt>
     <!--  TODO: Might make sense to do some validation here  -->
     <dd><input list="supported-countries" bind:value={$initialLocation.regionCode} /></dd>
 </dl>
@@ -43,7 +45,8 @@
 <dl>
     <dt>AR mode</dt>
     <dd>
-        <input id="armodeoscp" type="radio" bind:group={$arMode} value="{ARMODES.oscp}" />
+        <input id="armodeoscp" type="radio" bind:group={$arMode} value="{ARMODES.oscp}"
+               disabled="{$availableGeoPoseServices.length === 0  || null}"/>
         <label for="armodeoscp">{ARMODES.oscp}</label>
     </dd>
     <dd>
@@ -67,6 +70,13 @@
             {/each}
         {/if}
     </select></dd>
+</dl>
+
+<dl>
+    <dt>Recent GeoPose</dt>
+    <dd><pre>{JSON.stringify($recentLocalisation.geopose, null, 2)}</pre></dd>
+    <dt>at</dt>
+    <dd><pre>{JSON.stringify($recentLocalisation.localpose, null, 2)}</pre></dd>
 </dl>
 
 <dl>
