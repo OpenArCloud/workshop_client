@@ -19,11 +19,11 @@
 
     import { initialLocation, availableContentServices, currentMarkerImage,
         currentMarkerImageWidth, recentLocalisation } from '@src/stateStore';
-    import { createImageFromTexture, wait, ARMODES } from "@core/common";
+    import { wait, ARMODES } from "@core/common";
     import { createModel, createPlaceholder } from '@core/modelTemplates';
     import { calculateDistance, fakeLocationResult, calculateEulerRotation, toDegrees } from '@core/locationTools';
 
-    import { initializeGLCube, drawScene } from '@core/texture';
+    import { initCameraCaptureScene, drawCameraCaptureScene, createImageFromTexture } from '@core/cameraCapture';
     import ArCloudOverlay from "./dom-overlays/ArCloudOverlay.svelte";
     import MarkerOverlay from "./dom-overlays/MarkerOverlay.svelte";
 
@@ -46,8 +46,8 @@
 
     let gl = null;
     let glBinding = null;
-    let cameraShader = null;
 
+    let SHOW_CAPTURED_IMAGE = true;
     let trackedImage, trackedImageObject;
 
 
@@ -179,15 +179,15 @@
             throw new Error(error.message);
         }
 
-        gl = canvas.getContext('webgl2', {xrCompatible: true});
+        gl = canvas.getContext('webgl2', {xrCompatible: true}); // NOTE: preserveDrawingBuffer: true seems to have no effect
         glBinding = new XRWebGLBinding(app.xr.session, gl);
-
-        // cameraShader = initializeGLCube(gl);
 
         app.xr.session.updateRenderState({baseLayer: new XRWebGLLayer(app.xr.session, gl)});
         app.xr.session.requestReferenceSpace('local').then((refSpace) => {
             xrRefSpace = refSpace;
         });
+
+        initCameraCaptureScene(gl);
     }
 
     /**
@@ -236,16 +236,32 @@
      * @param frame     The XRFrame provided to the update loop
      */
     function handlePose(localPose, frame) {
-        gl.bindFramebuffer(gl.FRAMEBUFFER, app.xr.session.renderState.baseLayer.framebuffer);
 
-        for (let view of localPose.views) {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, app.xr.session.renderState.baseLayer.framebuffer);
+        
+
+        
+        for (let view of localPose.views) { // TODO: why run this code for every view?
             let viewport = app.xr.session.renderState.baseLayer.getViewport(view);
             gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+            
+            const cameraTexture = glBinding.getCameraImage(frame, view);
+            
+            // NOTE: we must draw at every frame into the framebuffer in AR mode, otherwise Chrome starts to cry.
+            drawCameraCaptureScene(gl, cameraTexture);
 
             if (doCaptureImage) {
                 doCaptureImage = false;
 
-                const image = captureImage(frame, view, viewport, localPose.cameraViews[0]);
+                const image = createImageFromTexture(gl, cameraTexture, viewport.width, viewport.height);
+                
+                if (SHOW_CAPTURED_IMAGE) {
+                    // DEBUG: verify if the image was captured correctly
+                    const img = new Image();
+                    img.src = image;
+                    document.body.appendChild(img);
+                }
+
                 localize(localPose, image, viewport.width, viewport.height)
                     // When localisation didn't already provide content, needs to be requested here
                     .then(([geoPose, data]) => {
@@ -257,42 +273,15 @@
 
                         placeContent(localPose, geoPose, data);
                     });
+
             }
         }
-    }
 
-    /**
-     * Get the camera image from WebXR.
-     *
-     * @param frame  XRFrame        Provides access to the information needed in order to render a single frame of
-     *                              animation for an XRSession describing a VR or AR sccene
-     * @param view  XRView      Provides information describing a single view into the XR scene for a specific frame,
-     *                          providing orientation and position information for the viewpoint
-     * @param viewport  XRViewPort      Provides properties used to describe the size and position of the current
-     *                                  viewport within the XRWebGLLayer being used to render the 3D scene
-     * @param cameraView  WebGLTexture      The texture with the camera image
-     */
-    function captureImage(frame, view, viewport, cameraView) {
-        cameraShader = initializeGLCube(gl);
-        const cameraTexture = glBinding.getCameraImage(frame, cameraView);
-        drawScene(gl, cameraTexture, view);
-
-        const image = createImageFromTexture(gl, cameraTexture, viewport.width, viewport.height);
-
-/*
-        {
-            // To verify if the image was captured correctly
-            const img = new Image();
-            img.src = image;
-            document.body.appendChild(img);
-        }
-*/
-
-        // WebGL shader was installed earlier to get the camera image rendered onto the texture
-        gl.deleteProgram(cameraShader);
-        cameraShader = null;
-
-        return image;
+        // DEBUG
+        //let glError = gl.getError();
+        //if (glError!= gl.NO_ERROR) {
+        //    console.log("GL error: " + glError);
+        //}
     }
 
     /**
