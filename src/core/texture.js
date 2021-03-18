@@ -348,6 +348,9 @@ function loadTexture(gl) {
 
 // Draw the scene.
 export function drawScene(gl, texture, view) {
+
+    const prevShaderId = gl.getParameter(gl.CURRENT_PROGRAM);
+
     // Set the drawing position to the "identity" point, which is
     // the center of the scene.
     const modelViewMatrix = mat4.create();
@@ -432,6 +435,10 @@ export function drawScene(gl, texture, view) {
         const offset = 0;
         gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
     }
+
+    //cleanup
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.useProgram(prevShaderId);
 }
 
 // Initialize a shader program, so WebGL knows how to draw our data
