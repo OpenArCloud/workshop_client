@@ -18,7 +18,7 @@
     import { IMAGEFORMAT } from 'gpp-access/GppGlobals.js';
 
     import { initialLocation, availableContentServices, currentMarkerImage,
-        currentMarkerImageWidth, recentLocalisation } from '@src/stateStore';
+        currentMarkerImageWidth, recentLocalisation, debug_appendCameraImage } from '@src/stateStore';
     import { createImageFromTexture, wait, ARMODES, debounce } from "@core/common";
     import { createModel, createPlaceholder } from '@core/modelTemplates';
     import { calculateDistance, fakeLocationResult, calculateEulerRotation, toDegrees } from '@core/locationTools';
@@ -271,9 +271,6 @@
                         $recentLocalisation.geopose = geoPose;
                         $recentLocalisation.localpose = localPose.transform;
 
-
-                        console.log(localPose.transform)
-
                         placeContent(localPose, geoPose, data);
                     });
             }
@@ -298,14 +295,13 @@
 
         const image = createImageFromTexture(gl, cameraTexture, viewport.width, viewport.height);
 
-/*
-        {
+        // Appends the captured image to the body element to verify that it was captured correctly
+        if ($debug_appendCameraImage === true) {
             // To verify if the image was captured correctly
             const img = new Image();
             img.src = image;
             document.body.appendChild(img);
         }
-*/
 
         // WebGL shader was installed earlier to get the camera image rendered onto the texture
         gl.deleteProgram(cameraShader);

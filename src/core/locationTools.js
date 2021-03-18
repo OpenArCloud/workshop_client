@@ -217,6 +217,7 @@ export function calculateDistance(localisationPose, objectPose) {
     const yValue = centerPoint.distanceTo(latDiff);
 
     // TODO: Add y-value when receiving valid height value from GeoPose service
+    // Ground plane for geodesic values is x/y, for 3D it's x/-z
     return {x:xValue, y:0.0, z:-yValue};
 }
 
