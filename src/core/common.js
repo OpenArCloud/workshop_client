@@ -152,3 +152,18 @@ function flip_index (kPel, width, height) {
 export function wait(delay) {
     return new Promise(resolve => setTimeout(resolve, delay));
 }
+
+/**
+ * Delays the execution of the provided function until timeout expired.
+ *
+ * @param func  function        Will be executed when timeout expires
+ * @param timeout  Number       Duration in milliseconds to delay the execution of the provided function
+ * @returns {function(...[*]=): void}
+ */
+export function debounce(func, timeout = 300){
+    let timer;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => { func.apply(this, args); }, timeout);
+    };
+}

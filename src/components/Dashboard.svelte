@@ -23,6 +23,13 @@
 </script>
 
 
+<style>
+    button {
+        margin: 50px;
+    }
+</style>
+
+
 <!-- TODO: Extract strings to contentStore -->
 <!-- TODO: Add countrycode -->
 <!-- TODO: Add GeoPose -->
