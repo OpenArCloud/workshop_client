@@ -18,8 +18,8 @@
     import { IMAGEFORMAT } from 'gpp-access/GppGlobals.js';
 
     import { initialLocation, availableContentServices, currentMarkerImage,
-        currentMarkerImageWidth, recentLocalisation } from '@src/stateStore';
-    import { wait, ARMODES } from "@core/common";
+        currentMarkerImageWidth, recentLocalisation, debug_appendCameraImage } from '@src/stateStore';
+    import { wait, ARMODES, debounce } from "@core/common";
     import { createModel, createPlaceholder } from '@core/modelTemplates';
     import { calculateDistance, fakeLocationResult, calculateEulerRotation, toDegrees } from '@core/locationTools';
 
@@ -40,7 +40,7 @@
     let app;
 
     let doCaptureImage = false;
-    let showFooter = false, hasPose = false, isLocalizing = false, isLocalized = false;
+    let showFooter = false, hasPose = false, isLocalizing = false, isLocalized = false, hasLostTracking = false;
 
     let xrRefSpace = null;
 
@@ -49,9 +49,13 @@
 
     let trackedImage, trackedImageObject;
 
+    // TODO: replace with dashboard settings
     let debugFakeLocation = true;
     let debugShowCapturedImage = true;
     let debugShowLocalAxes = true;
+
+    let poseFoundHeartbeat = null;
+
 
 
     /**
@@ -213,12 +217,29 @@
     function onUpdate(frame) {
         const localPose = frame.getViewerPose(xrRefSpace);
 
-        if (activeArMode === ARMODES.oscp && localPose) {
-            hasPose = true;
-            handlePose(localPose, frame);
-        } else if (activeArMode === ARMODES.marker) {
-            handleMarker();
+        if (localPose) {
+            handlePoseHeartbeat();
+
+            if (activeArMode === ARMODES.oscp) {
+                hasPose = true;
+                handlePose(localPose, frame);
+            } else if (activeArMode === ARMODES.marker) {
+                handleMarker();
+            }
         }
+    }
+
+    /**
+     * Handles a pose found heartbeat. When it's not triggered for a specific time (300ms as default) an indicator
+     * is shown to let the user know that the tracking was lost.
+     */
+    function handlePoseHeartbeat() {
+        hasLostTracking = false;
+        if (poseFoundHeartbeat === null) {
+            poseFoundHeartbeat = debounce(() => hasLostTracking = true);
+        }
+
+        poseFoundHeartbeat();
     }
 
     /**
@@ -278,9 +299,9 @@
                     .then(([geoPose, data]) => {
                         $recentLocalisation.geopose = geoPose;
                         $recentLocalisation.localpose = localPose.transform;
+
                         placeContent(localPose, geoPose, data);
                     });
-
             }
         }
     }
@@ -309,6 +330,7 @@
 
             sendRequest(`${$availableContentServices[0].url}/${objectEndpoint}`, JSON.stringify(geoPoseRequest))
                 .then(data => {
+                    isLocalizing = false;
                     isLocalized = true;
                     wait(1000).then(showFooter = false);
 
@@ -422,21 +444,38 @@
 
         text-align: center;
     }
+
+    #trackinglostindicator {
+        position: absolute;
+        right: 10px;
+        bottom: 10px;
+
+        width: 2em;
+        height: 2em;
+
+        background-color: red;
+
+        border-radius: 50%;
+    }
 </style>
 
 
 <canvas id='application' bind:this={canvas}></canvas>
 <aside bind:this={overlay} on:beforexrselect={(event) => event.preventDefault()}>
-    {#if showFooter}
+    {#if showFooter || hasLostTracking}
         <footer>
             {#if activeArMode === ARMODES.oscp}
-            <ArCloudOverlay hasPose="{hasPose}" isLocalizing="{isLocalizing}" isLocalized="{isLocalized}"
+                <ArCloudOverlay hasPose="{hasPose}" isLocalizing="{isLocalizing}" isLocalized="{isLocalized}"
                         on:startLocalisation={startLocalisation} />
             {:else if activeArMode === ARMODES.marker}
                 <MarkerOverlay />
             {:else}
                 <p>Somethings wrong...</p>
                 <p>Apologies.</p>
+            {/if}
+
+            {#if hasLostTracking}
+                <div id="trackinglostindicator"></div>
             {/if}
         </footer>
     {/if}

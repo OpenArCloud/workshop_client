@@ -160,3 +160,19 @@ export const currentMarkerImage = writable('marker.jpg');
  * @type {Writable<string>}
  */
 export const currentMarkerImageWidth = writable('0.2');
+
+
+
+
+
+
+/**
+ * Appends the captured image used for localisation to the body an an image element.
+ *
+ * @type {Writable<boolean>}
+ */
+const storedDebug_appendCameraImage = localStorage.getItem('debug_appendCameraImage') === 'true';
+export const debug_appendCameraImage = writable(storedDebug_appendCameraImage);
+debug_appendCameraImage.subscribe(value => {
+    localStorage.setItem('debug_appendCameraImage', value === true ? 'true' : 'false');
+})

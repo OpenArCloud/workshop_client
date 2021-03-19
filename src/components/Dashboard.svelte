@@ -13,7 +13,7 @@
 
     import { showDashboard, initialLocation, availableGeoPoseServices, availableContentServices,
         selectedGeoPoseService, selectedContentService, arMode, currentMarkerImage,
-        currentMarkerImageWidth, recentLocalisation } from '@src/stateStore';
+        currentMarkerImageWidth, recentLocalisation, debug_appendCameraImage } from '@src/stateStore';
 
     import { ARMODES } from '@core/common';
 
@@ -23,9 +23,14 @@
 </script>
 
 
+<style>
+    button {
+        margin: 50px;
+    }
+</style>
+
+
 <!-- TODO: Extract strings to contentStore -->
-<!-- TODO: Add countrycode -->
-<!-- TODO: Add GeoPose -->
 
 <div>
     <input id="showagain" type="checkbox" bind:checked={$showDashboard} />
@@ -59,6 +64,11 @@
     </dd>
 </dl>
 
+<div>
+    <input id="appendcameraimage" type="checkbox" bind:checked={$debug_appendCameraImage} />
+    <label for="appendcameraimage">Append captured image</label>
+</div>
+
 <dl>
     <dt>GeoPose Server</dt>
     <dd><select bind:value={$selectedGeoPoseService} disabled="{$availableGeoPoseServices.length === 0  || null}">
@@ -75,8 +85,9 @@
 <dl>
     <dt>Recent GeoPose</dt>
     <dd><pre>{JSON.stringify($recentLocalisation.geopose, null, 2)}</pre></dd>
-    <dt>at</dt>
-    <dd><pre>{JSON.stringify($recentLocalisation.localpose, null, 2)}</pre></dd>
+<!--    TODO: Values aren't displayed for some reason. Fix. -->
+<!--    <dt>at</dt>-->
+<!--    <dd><pre>{JSON.stringify($recentLocalisation.localpose, null, 2)}</pre></dd>-->
 </dl>
 
 <dl>
