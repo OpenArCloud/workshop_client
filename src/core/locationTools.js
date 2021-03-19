@@ -71,8 +71,8 @@ export const fakeLocationResult = {
                     "pose": {
                         "altitude": -0.2476527839899063,
                         "ellipsoidHeight": -1,
-                        "latitude": 8.545727117939203,
-                        "longitude": 48.75619913985165,
+                        "latitude": 48.75619913985165,
+                        "longitude": 8.545727117939203,
                         "quaternion": [
                             0.6316581032678967,
                             -0.3041746084477361,
@@ -118,8 +118,8 @@ export const fakeLocationResult = {
                     "pose": {
                         "altitude": -0.05442802235484123,
                         "ellipsoidHeight": -1,
-                        "latitude": 8.545694856385769,
-                        "longitude": 48.75619800176131,
+                        "latitude": 48.75619800176131,
+                        "longitude": 8.545694856385769,
                         "quaternion": [
                             0.10833754747430582,
                             -0.7679511427475457,

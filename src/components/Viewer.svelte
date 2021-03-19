@@ -18,9 +18,10 @@
     import { IMAGEFORMAT } from 'gpp-access/GppGlobals.js';
 
     import { initialLocation, availableContentServices, currentMarkerImage,
-        currentMarkerImageWidth, recentLocalisation, debug_appendCameraImage } from '@src/stateStore';
+        currentMarkerImageWidth, recentLocalisation,
+        debug_appendCameraImage, debug_showLocationAxis, debug_useLocalServerResponse} from '@src/stateStore';
     import { wait, ARMODES, debounce } from "@core/common";
-    import { createModel, createPlaceholder } from '@core/modelTemplates';
+    import { createModel, createPlaceholder, addAxes } from '@core/modelTemplates';
     import { calculateDistance, fakeLocationResult, calculateEulerRotation, toDegrees } from '@core/locationTools';
 
     import { initCameraCaptureScene, drawCameraCaptureScene, createImageFromTexture } from '@core/cameraCapture';
@@ -42,20 +43,9 @@
     let doCaptureImage = false;
     let showFooter = false, hasPose = false, isLocalizing = false, isLocalized = false, hasLostTracking = false;
 
-    let xrRefSpace = null;
-
-    let gl = null;
-    let glBinding = null;
-
+    let xrRefSpace = null, gl = null, glBinding = null;
     let trackedImage, trackedImageObject;
-
-    // TODO: replace with dashboard settings
-    let debugFakeLocation = true;
-    let debugShowCapturedImage = true;
-    let debugShowLocalAxes = true;
-
     let poseFoundHeartbeat = null;
-
 
 
     /**
@@ -94,7 +84,7 @@
             message("Immersive AR is " + (available ? 'available' : 'unavailable'));
             if (available && !app.xr.active) {
                 const camera = setupEnvironment();
-                startSession(camera); // TODO: camera should be called cameraNode
+                startSession(camera);
             }
         });
 
@@ -107,6 +97,8 @@
      * Set up the 3D environment as required according to the current real environment.*
      */
     function setupEnvironment() {
+        // TODO: Use environmental lighting?!
+
         // create camera
         const camera = new pc.Entity();
         camera.addComponent('camera', {
@@ -123,11 +115,11 @@
         light.translate(0, 10, 0);
         app.root.addChild(light);
 
-        if (debugShowLocalAxes) {
+        if ($debug_showLocationAxis) {
             addAxes(app);
         }
 
-        return camera;
+        return camera.camera;
     }
 
     /**
@@ -136,22 +128,19 @@
     function startSession(camera) {
         app.xr.domOverlay.root = overlay;
 
-        let options = {};
-
         if (activeArMode === ARMODES.oscp) {
-            options = {
+            camera.startXr(pc.XRTYPE_AR, pc.XRSPACE_LOCALFLOOR, {
                 requiredFeatures: ['dom-overlay', 'camera-access'],
                 callback: onXRSessionStartedOSCP
-            }
-            camera.camera.startXr(pc.XRTYPE_AR, pc.XRSPACE_LOCALFLOOR, options);
+            });
         } else if (activeArMode === ARMODES.marker) {
-            options = {
-                requiredFeatures: ['image-tracking'],
-                imageTracking: true,
-                callback: onXRSessionStartedMarker
-            }
             setupMarkers()
-                .then(() => camera.camera.startXr(pc.XRTYPE_AR, pc.XRSPACE_LOCALFLOOR, options));
+                .then(() => camera.startXr(pc.XRTYPE_AR, pc.XRSPACE_LOCALFLOOR, {
+                        requiredFeatures: ['image-tracking'],
+                        imageTracking: true,
+                        callback: onXRSessionStartedMarker
+                    }
+                ));
         }
     }
 
@@ -264,10 +253,10 @@
      * @param frame     The XRFrame provided to the update loop
      */
     function handlePose(localPose, frame) {
-
         gl.bindFramebuffer(gl.FRAMEBUFFER, app.xr.session.renderState.baseLayer.framebuffer);
-        
-        for (let view of localPose.views) { // TODO: why run this code for every view?
+
+        // TODO: Correctly handle multiple views. No need to localize twice for glasses.
+        for (let view of localPose.views) {
             let viewport = app.xr.session.renderState.baseLayer.getViewport(view);
             gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
             
@@ -277,8 +266,11 @@
             // We want to capture the camera image, however, it is not directly available here,
             // but only as a GPU texture. We draw something textured with the camera image at every frame,
             // so that the texture is kept in GPU memory. We can then capture it below.
-            const cameraTexture = glBinding.getCameraImage(frame, view);
-            drawCameraCaptureScene(gl, cameraTexture);
+            let cameraTexture = null;
+            if (!isLocalized) {
+                cameraTexture = glBinding.getCameraImage(frame, view);
+                drawCameraCaptureScene(gl, cameraTexture);
+            }
 
             if (doCaptureImage) {
                 doCaptureImage = false;
@@ -287,7 +279,7 @@
 
                 const image = createImageFromTexture(gl, cameraTexture, viewport.width, viewport.height);
                 
-                if (debugShowCapturedImage) {
+                if ($debug_appendCameraImage) {
                     // DEBUG: verify if the image was captured correctly
                     const img = new Image();
                     img.src = image;
@@ -319,33 +311,30 @@
      */
     function localize(localPose, image, width, height) {
         return new Promise((resolve, reject) => {
-            if (!debugFakeLocation) {
+            if (!$debug_useLocalServerResponse) {
+                const geoPoseRequest = new GeoPoseRequest(uuidv4())
+                    .addCameraData(IMAGEFORMAT.JPG, [width, height], image.split(',')[1], 0, new ImageOrientation(false, 0))
+                    .addLocationData($initialLocation.lat, $initialLocation.lon, 0, 0, 0, 0, 0);
 
-            const geoPoseRequest = new GeoPoseRequest(uuidv4())
-                .addCameraData(IMAGEFORMAT.JPG, [width, height], image.split(',')[1], 0, new ImageOrientation(false, 0))
-                .addLocationData($initialLocation.lat, $initialLocation.lon, 0, 0, 0, 0, 0);
+                // Services haven't implemented recent changes to the protocol yet
+                validateRequest(false);
 
-            // Services haven't implemented recent changes to the protocol yet
-            validateRequest(false);
+                sendRequest(`${$availableContentServices[0].url}/${objectEndpoint}`, JSON.stringify(geoPoseRequest))
+                    .then(data => {
+                        isLocalizing = false;
+                        isLocalized = true;
+                        wait(1000).then(showFooter = false);
 
-            sendRequest(`${$availableContentServices[0].url}/${objectEndpoint}`, JSON.stringify(geoPoseRequest))
-                .then(data => {
-                    isLocalizing = false;
-                    isLocalized = true;
-                    wait(1000).then(showFooter = false);
-
-                    if ('scrs' in data) {
-                        resolve([data.geopose.pose, data.scrs]);
-                    }
-                })
-                .catch(error => {
-                    // TODO: Offer marker alternative
-                    isLocalizing = false;
-                    console.error(error);
-                    reject(error);
-                });
-
-
+                        if ('scrs' in data) {
+                            resolve([data.geopose.pose, data.scrs]);
+                        }
+                    })
+                    .catch(error => {
+                        // TODO: Offer marker alternative
+                        isLocalizing = false;
+                        console.error(error);
+                        reject(error);
+                    });
             } else {
                 // Stored SCD response for development
                 console.log('fake localisation');
@@ -353,7 +342,6 @@
                 wait(1000).then(showFooter = false);
                 resolve([fakeLocationResult.geopose.pose, fakeLocationResult.scrs])
             }
-
         });
     }
 
@@ -371,12 +359,6 @@
             // Augmented City special path for the GeoPose. Should be just 'record.content.geopose'
             const objectPose = record.content.geopose.pose;
 
-            if (debugFakeLocation) {
-                if ($availableContentServices[0].url.includes('augmented.city')) {
-                        [objectPose.longitude, objectPose.latitude] = [objectPose.latitude, objectPose.longitude];
-                }
-            }
-
             // This is difficult to generalize, because there are no types defined yet.
             if (record.content.type === 'placeholder') {
                 const contentPosition = calculateDistance(globalPose, objectPose);
@@ -393,33 +375,6 @@
             }
         })
     }
-    
-    //DEBUG: show local coordinate system by primitive objcects
-    function addAxes(app) {
-        // add something small at the positive X, Y, Z:
-        const objX = createObject("box", new pc.Color(1, 0, 0));
-        objX.setPosition(1, 0, 0);
-        app.root.addChild(objX);
-        const objY = createObject("sphere", new pc.Color(0, 1, 0));
-        objY.setPosition(0, 1, 0);
-        app.root.addChild(objY);
-        const objZ = createObject("cone", new pc.Color(0, 0, 1));
-        objZ.setPosition(0, 0, 1);
-        app.root.addChild(objZ);
-
-        let obj0 = createObject("box", new pc.Color(1, 0, 0));
-        obj0.setLocalScale(0.01, 0.01, 0.01);
-        obj0.setPosition(0, 0, 0);
-        app.root.addChild(obj0);
-    }
-    function createObject(type, color) {
-        let entity = new pc.Entity();
-        entity.addComponent("model", {type: type});
-        entity.setLocalScale(0.1, 0.1, 0.1);
-        return entity;
-    }
-
-
 </script>
 
 

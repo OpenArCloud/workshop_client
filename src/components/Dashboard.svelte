@@ -13,7 +13,8 @@
 
     import { showDashboard, initialLocation, availableGeoPoseServices, availableContentServices,
         selectedGeoPoseService, selectedContentService, arMode, currentMarkerImage,
-        currentMarkerImageWidth, recentLocalisation, debug_appendCameraImage } from '@src/stateStore';
+        currentMarkerImageWidth, recentLocalisation, debug_appendCameraImage, debug_showLocationAxis,
+        debug_useLocalServerResponse } from '@src/stateStore';
 
     import { ARMODES } from '@core/common';
 
@@ -31,6 +32,12 @@
 
 
 <!-- TODO: Extract strings to contentStore -->
+
+
+<button on:click={() => dispatch('okClicked')}>Go immersive</button>
+
+
+<h2>Application state</h2>
 
 <div>
     <input id="showagain" type="checkbox" bind:checked={$showDashboard} />
@@ -63,11 +70,6 @@
         <label for="armodeauto">{ARMODES.auto}</label>
     </dd>
 </dl>
-
-<div>
-    <input id="appendcameraimage" type="checkbox" bind:checked={$debug_appendCameraImage} />
-    <label for="appendcameraimage">Append captured image</label>
-</div>
 
 <dl>
     <dt>GeoPose Server</dt>
@@ -114,10 +116,26 @@
 
 <div>
     <input id="allowP2p" type="checkbox" checked />
-    <label for="allowP2p">Connect to local network</label>
+    <label for="allowP2p">Connect to local p2p network</label>
     <p>Connected to p2p network</p>
 </div>
 
-<button on:click={() => dispatch('okClicked')}>Go immersive</button>
+<h2>Debug settings</h2>
+
+<div>
+    <input id="appendcameraimage" type="checkbox" bind:checked={$debug_appendCameraImage} />
+    <label for="appendcameraimage">Append captured image</label>
+</div>
+
+<div>
+    <input id="showlocationaxis" type="checkbox" bind:checked={$debug_showLocationAxis} />
+    <label for="showlocationaxis">Show local zero point markers</label>
+</div>
+
+<div>
+    <input id="uselocalserverresponse" type="checkbox" bind:checked={$debug_useLocalServerResponse} />
+    <label for="uselocalserverresponse">Use local server response</label>
+</div>
+
 
 {@html supportedCountries}
