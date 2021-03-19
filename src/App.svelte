@@ -13,12 +13,14 @@
 
     import { ARMODES } from '@src/core/common'
     import { getCurrentLocation } from '@src/core/locationTools'
+    import * as P2p from '@src/core/p2pnetwork'
 
     import Dashboard from '@components/Dashboard.svelte';
     import Overlay from '@components/Overlay.svelte'
     import Viewer from '@components/Viewer.svelte';
 
-    import { arIsAvailable, showDashboard, hasIntroSeen, initialLocation, ssr, arMode } from './stateStore';
+    import { arIsAvailable, showDashboard, hasIntroSeen, initialLocation, ssr, arMode, allowP2pNetwork
+        } from './stateStore';
     import { info, intro, arOkMessage, noArMessage, outro, startedOkLabel, doitOkLabel,
         markerInfo} from './contentStore';
 
@@ -58,6 +60,14 @@
                     // TODO: Inform user
                     console.log(error);
                 });
+        }
+    }
+
+    $: {
+        if ($allowP2pNetwork) {
+            P2p.connect();
+        } else {
+            P2p.disconnect();
         }
     }
 

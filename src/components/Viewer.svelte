@@ -7,9 +7,12 @@
     Initializes and runs the AR session. Configuration will be according the data provided by the parent.
 -->
 <script>
-    import { createEventDispatcher } from 'svelte';
+    import { createEventDispatcher, onMount } from 'svelte';
 
-    import '@thirdparty/playcanvas.min.js';
+    import '@thirdparty/playcanvas.min';
+    import '@thirdparty/playcanvas-extras';
+    import { wasmSupported, loadWasmModuleAsync } from '@thirdparty/wasm-loader';
+
     import {v4 as uuidv4} from 'uuid';
 
     import { sendRequest, objectEndpoint, validateRequest } from 'gpp-access';
@@ -21,7 +24,7 @@
         currentMarkerImageWidth, recentLocalisation,
         debug_appendCameraImage, debug_showLocationAxis, debug_useLocalServerResponse} from '@src/stateStore';
     import { wait, ARMODES, debounce } from "@core/common";
-    import { createModel, createPlaceholder, addAxes } from '@core/modelTemplates';
+    import { createModel, createPlaceholder, addAxes, createPhysicalShape } from '@core/modelTemplates';
     import { calculateDistance, fakeLocationResult, calculateEulerRotation, toDegrees } from '@core/locationTools';
 
     import { initCameraCaptureScene, drawCameraCaptureScene, createImageFromTexture } from '@core/cameraCapture';
@@ -46,6 +49,15 @@
     let xrRefSpace = null, gl = null, glBinding = null;
     let trackedImage, trackedImageObject;
     let poseFoundHeartbeat = null;
+
+
+    onMount(() => {
+        if (wasmSupported()) {
+            loadWasmModuleAsync('Ammo', '../third-party/ammo/ammo.wasm.js', '../third-party/ammo/ammo.wasm.wasm', () => {});
+        } else {
+            loadWasmModuleAsync('Ammo', '../third-party/ammo/ammo.js', '', () => {});
+        }
+    })
 
 
     /**
@@ -374,6 +386,24 @@
                 app.root.addChild(placeholder);
             }
         })
+
+        // Testing object for p2p
+        const material = new pc.StandardMaterial();
+        material.diffuse = new pc.Color(Math.random(), Math.random(), .5);
+
+        const tester = createPhysicalShape('sphere', material, 3, 1, 0);
+
+        app.mouse.on(pc.EVENT_MOUSEDOWN, (event) => {
+            const from = app.xr.camera.screenToWorld(event.x, event.y, app.xr.camera.nearClip);
+            const to = app.xr.camera.screenToWorld(event.x, event.y, app.xr.camera.farClip);
+
+            const result = app.systems.rigidbody.raycastFirst(from, to);
+            if (result) {
+                const pickedEntity = result.entity;
+                pickedEntity.model.material.diffuse = new pc.Color(Math.random(), Math.random(), .5);
+                material.update();
+            }
+        });
     }
 </script>
 
