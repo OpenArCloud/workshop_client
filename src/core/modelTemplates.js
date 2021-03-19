@@ -73,9 +73,16 @@ export function addAxes(app) {
  * @returns {Entity}
  */
 function createObject(type, color) {
-    // TODO: set color
     const entity = new pc.Entity();
     entity.addComponent("model", {type: type});
     entity.setLocalScale(0.1, 0.1, 0.1);
+
+    if (color) {
+        const material = new pc.StandardMaterial();
+        material.diffuse = color;
+        material.update();
+
+        entity.model.material = material;
+    }
     return entity;
 }

@@ -124,6 +124,24 @@ export const availableContentServices = derived(ssr, ($ssr, set) => {
 
 
 /**
+ * Derived store of ssr store for easy access of all contained p2pmaster services.
+ *
+ * @type {Readable<SERVICE[]>}
+ */
+export const availableP2pServices = derived(ssr, ($ssr, set) => {
+    let p2pServices = [];
+    for (let record of $ssr) {
+        p2pServices.concat(record.services
+            .forEach(service => {
+                if (service.type === 'p2p-master')
+                    p2pServices.push(service);
+            }));
+    }
+    set(p2pServices);
+}, []);
+
+
+/**
  * The one of the returned GeoPose service to be used for localisation.
  *
  * @type {Writable<SERVICE>}
@@ -147,6 +165,14 @@ export const selectedContentService = writable('none');
 
 
 /**
+ * The one of the returned p2p services to be used to set up a local peer to peer network.
+ *
+ * @type {Writable<SERVICE>}
+ */
+export const selectedP2pService = writable('none');
+
+
+/**
  * The marker image file to use for marker mode.
  *
  * @type {Writable<string>}
@@ -162,6 +188,24 @@ export const currentMarkerImage = writable('marker.jpg');
 export const currentMarkerImageWidth = writable('0.2');
 
 
+/**
+ * Defines whether or not p2p network connection is allowed by the user.
+ *
+ * @type {Writable<boolean>}
+ */
+const storedAllowP2pNetwork = localStorage.getItem('allowP2pNetwork') === 'true';
+export const allowP2pNetwork = writable(storedAllowP2pNetwork);
+allowP2pNetwork.subscribe(value => {
+    localStorage.setItem('allowP2pNetwork', value === true ? 'true' : 'false');
+})
+
+
+/**
+ * The current state of the peer to peer network connection.
+ *
+ * @type {Writable<string>}
+ */
+export const p2pNetworkState = writable('none');
 
 
 
