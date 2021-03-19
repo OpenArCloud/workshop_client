@@ -1,5 +1,6 @@
 
-// This code
+// This code draws a single pixel textured by the camera background at every frame,
+// in order to keep the camera texture in GPU memory, so that we can read it back.
 
 let shaderProgram = null;
 let vertexBuffer = null;
@@ -144,7 +145,7 @@ function flip_index (kPel, width, height) {
 }
 
 
-
+/*
 // code from https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_best_practices
 function clientWaitAsync(gl, sync, flags, interval_ms) {
     return new Promise((resolve, reject) => {
@@ -165,7 +166,7 @@ function clientWaitAsync(gl, sync, flags, interval_ms) {
 }
 
 async function getBufferSubDataAsync(gl, target, buffer, srcByteOffset, dstBuffer,
-            /* optional */ dstOffset, /* optional */ length) {
+            dstOffset, length) {
 
     const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
     gl.flush();
@@ -192,3 +193,4 @@ async function readPixelsAsync(gl, x, y, w, h, format, type, dest) {
     gl.deleteBuffer(buf);
     return dest;
 }
+*/

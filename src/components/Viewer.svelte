@@ -47,11 +47,11 @@
     let gl = null;
     let glBinding = null;
 
-    let USE_FAKE_LOCATION = true;
-    let SHOW_CAPTURED_IMAGE = true;
-    let SHOW_LOCAL_AXES = true;
-
     let trackedImage, trackedImageObject;
+
+    let debugFakeLocation = true;
+    let debugShowCapturedImage = true;
+    let debugShowLocalAxes = true;
 
 
     /**
@@ -119,7 +119,7 @@
         light.translate(0, 10, 0);
         app.root.addChild(light);
 
-        if (SHOW_LOCAL_AXES) {
+        if (debugShowLocalAxes) {
             addAxes(app);
         }
 
@@ -237,32 +237,36 @@
     }
 
     /**
-     * Handles update loop when ARCloud mode is used.
+     * Handles update loop when AR Cloud mode is used.
      *
-     * @param localPose      The pose of the device as reported by the XRFrame
+     * @param localPose The pose of the device as reported by the XRFrame
      * @param frame     The XRFrame provided to the update loop
      */
     function handlePose(localPose, frame) {
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, app.xr.session.renderState.baseLayer.framebuffer);
         
-
-        
         for (let view of localPose.views) { // TODO: why run this code for every view?
             let viewport = app.xr.session.renderState.baseLayer.getViewport(view);
             gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
             
+            // NOTE: if we do not draw anything on pose update for more than 5 frames, Chrome's WebXR sends warnings
+            // See OnFrameEnd() in https://chromium.googlesource.com/chromium/src/third_party/+/master/blink/renderer/modules/xr/xr_webgl_layer.cc
+
+            // We want to capture the camera image, however, it is not directly available here,
+            // but only as a GPU texture. We draw something textured with the camera image at every frame,
+            // so that the texture is kept in GPU memory. We can then capture it below.
             const cameraTexture = glBinding.getCameraImage(frame, view);
-            
-            // NOTE: we must draw at every frame into the framebuffer in AR mode, otherwise Chrome starts to cry.
             drawCameraCaptureScene(gl, cameraTexture);
 
             if (doCaptureImage) {
                 doCaptureImage = false;
 
+                // TODO: try to queue the camera capture code on XRSession.requestAnimationFrame()
+
                 const image = createImageFromTexture(gl, cameraTexture, viewport.width, viewport.height);
                 
-                if (SHOW_CAPTURED_IMAGE) {
+                if (debugShowCapturedImage) {
                     // DEBUG: verify if the image was captured correctly
                     const img = new Image();
                     img.src = image;
@@ -274,21 +278,11 @@
                     .then(([geoPose, data]) => {
                         $recentLocalisation.geopose = geoPose;
                         $recentLocalisation.localpose = localPose.transform;
-
-
-                        console.log(localPose.transform)
-
                         placeContent(localPose, geoPose, data);
                     });
 
             }
         }
-
-        // DEBUG
-        //let glError = gl.getError();
-        //if (glError!= gl.NO_ERROR) {
-        //    console.log("GL error: " + glError);
-        //}
     }
 
     /**
@@ -304,7 +298,7 @@
      */
     function localize(localPose, image, width, height) {
         return new Promise((resolve, reject) => {
-            if (!USE_FAKE_LOCATION) {
+            if (!debugFakeLocation) {
 
             const geoPoseRequest = new GeoPoseRequest(uuidv4())
                 .addCameraData(IMAGEFORMAT.JPG, [width, height], image.split(',')[1], 0, new ImageOrientation(false, 0))
@@ -355,7 +349,7 @@
             // Augmented City special path for the GeoPose. Should be just 'record.content.geopose'
             const objectPose = record.content.geopose.pose;
 
-            if (USE_FAKE_LOCATION) {
+            if (debugFakeLocation) {
                 if ($availableContentServices[0].url.includes('augmented.city')) {
                         [objectPose.longitude, objectPose.latitude] = [objectPose.latitude, objectPose.longitude];
                 }
@@ -365,8 +359,9 @@
             if (record.content.type === 'placeholder') {
                 const contentPosition = calculateDistance(globalPose, objectPose);
                 const placeholder = createPlaceholder(record.content.keywords);
-                placeholder.setPosition(contentPosition.x + localPosition.x,contentPosition.y + localPosition.y,
-                    contentPosition.z + localPosition.z);
+                placeholder.setPosition(contentPosition.x + localPosition.x,
+                                        contentPosition.y + localPosition.y,
+                                        contentPosition.z + localPosition.z);
 
                 const rotation = calculateEulerRotation(globalPose.quaternion, localPose.transform.orientation);
                 placeholder.rotate(toDegrees(rotation[0]), toDegrees(rotation[1]), toDegrees(rotation[2]));
@@ -379,7 +374,7 @@
     
     //DEBUG: show local coordinate system by primitive objcects
     function addAxes(app) {
-        // DEBUG: add something small at the positive X, Y, Z:
+        // add something small at the positive X, Y, Z:
         const objX = createObject("box", new pc.Color(1, 0, 0));
         objX.setPosition(1, 0, 0);
         app.root.addChild(objX);
