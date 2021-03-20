@@ -88,26 +88,3 @@ function createObject(type, color) {
     }
     return entity;
 }
-
-
-export function createPhysicalShape(type, material, x, y, z) {
-    const entity = new pc.Entity();
-
-    // Have to set the position of the entity before adding the static rigidbody
-    // component because static bodies cannot be moved after creation
-    app.root.addChild(entity);
-    entity.setPosition(x, y, z);
-
-    entity.addComponent("model", {
-        type: type,
-        material: material
-    });
-    entity.addComponent("rigidbody", {
-        type: "static"
-    });
-    entity.addComponent("collision", {
-        type: type
-    });
-
-    return entity;
-}

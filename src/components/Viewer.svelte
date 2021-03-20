@@ -7,11 +7,9 @@
     Initializes and runs the AR session. Configuration will be according the data provided by the parent.
 -->
 <script>
-    import { createEventDispatcher, onMount } from 'svelte';
+    import { createEventDispatcher } from 'svelte';
 
     import '@thirdparty/playcanvas.min';
-    import '@thirdparty/playcanvas-extras';
-    import { wasmSupported, loadWasmModuleAsync } from '@thirdparty/wasm-loader';
 
     import {v4 as uuidv4} from 'uuid';
 
@@ -24,7 +22,7 @@
         currentMarkerImageWidth, recentLocalisation,
         debug_appendCameraImage, debug_showLocationAxis, debug_useLocalServerResponse} from '@src/stateStore';
     import { wait, ARMODES, debounce } from "@core/common";
-    import { createModel, createPlaceholder, addAxes, createPhysicalShape } from '@core/modelTemplates';
+    import { createModel, createPlaceholder, addAxes } from '@core/modelTemplates';
     import { calculateDistance, fakeLocationResult, calculateEulerRotation, toDegrees } from '@core/locationTools';
 
     import { initCameraCaptureScene, drawCameraCaptureScene, createImageFromTexture } from '@core/cameraCapture';
@@ -44,20 +42,35 @@
     let app;
 
     let doCaptureImage = false;
-    let showFooter = false, hasPose = false, isLocalizing = false, isLocalized = false, hasLostTracking = false;
+    let showFooter = false, firstPoseReceived = false, isLocalizing = false, isLocalized = false, hasLostTracking = false;
 
     let xrRefSpace = null, gl = null, glBinding = null;
     let trackedImage, trackedImageObject;
     let poseFoundHeartbeat = null;
 
+    // TODO: Setup event target array, based on info received from SCD
+    let tester;
 
-    onMount(() => {
-        if (wasmSupported()) {
-            loadWasmModuleAsync('Ammo', '../third-party/ammo/ammo.wasm.js', '../third-party/ammo/ammo.wasm.wasm', () => {});
-        } else {
-            loadWasmModuleAsync('Ammo', '../third-party/ammo/ammo.js', '', () => {});
+
+    // Setup default content of scene
+    $: {
+        if (firstPoseReceived && tester === undefined) {
+            // Testing object for p2p
+            const material = new pc.StandardMaterial();
+            material.diffuse = new pc.Color(Math.random(), Math.random(), .5);
+            material.update();
+
+            tester = createModel();
+            tester.setLocalScale(1, 1, 1);
+            tester.setPosition(0, 1, -3);
+            tester.model.material = material;
+            app.root.addChild(tester)
+
+            if ($debug_showLocationAxis) {
+                addAxes(app);
+            }
         }
-    })
+    }
 
 
     /**
@@ -89,6 +102,7 @@
             message("Immersive AR session has ended");
 
             app = null;
+            firstPoseReceived = false;
             dispatch('arSessionEnded');
         });
 
@@ -127,11 +141,25 @@
         light.translate(0, 10, 0);
         app.root.addChild(light);
 
-        if ($debug_showLocationAxis) {
-            addAxes(app);
-        }
+        app.scene.ambientLight = new pc.Color(0.5, 0.5, 0.5);
+
+        app.mouse.on(pc.EVENT_MOUSEUP, onMouseClick);
 
         return camera.camera;
+    }
+
+
+    function onMouseClick(event) {
+        if (tester) {
+            const newColors = [Math.random(), Math.random(), Math.random()];
+            tester.model.material.diffuse = new pc.Color(newColors);
+            tester.model.material.update();
+
+            dispatch('broadcast', {
+                event: 'color',
+                value: newColors
+            });
+        }
     }
 
     /**
@@ -222,11 +250,15 @@
             handlePoseHeartbeat();
 
             if (activeArMode === ARMODES.oscp) {
-                hasPose = true;
+                firstPoseReceived = true;
                 handlePose(localPose, frame);
             } else if (activeArMode === ARMODES.marker) {
                 handleMarker();
             }
+        }
+
+        if (tester) {
+            tester.rotateLocal(0.3, 0, 0.1);
         }
     }
 
@@ -271,7 +303,7 @@
         for (let view of localPose.views) {
             let viewport = app.xr.session.renderState.baseLayer.getViewport(view);
             gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
-            
+
             // NOTE: if we do not draw anything on pose update for more than 5 frames, Chrome's WebXR sends warnings
             // See OnFrameEnd() in https://chromium.googlesource.com/chromium/src/third_party/+/master/blink/renderer/modules/xr/xr_webgl_layer.cc
 
@@ -290,7 +322,7 @@
                 // TODO: try to queue the camera capture code on XRSession.requestAnimationFrame()
 
                 const image = createImageFromTexture(gl, cameraTexture, viewport.width, viewport.height);
-                
+
                 if ($debug_appendCameraImage) {
                     // DEBUG: verify if the image was captured correctly
                     const img = new Image();
@@ -386,24 +418,6 @@
                 app.root.addChild(placeholder);
             }
         })
-
-        // Testing object for p2p
-        const material = new pc.StandardMaterial();
-        material.diffuse = new pc.Color(Math.random(), Math.random(), .5);
-
-        const tester = createPhysicalShape('sphere', material, 3, 1, 0);
-
-        app.mouse.on(pc.EVENT_MOUSEDOWN, (event) => {
-            const from = app.xr.camera.screenToWorld(event.x, event.y, app.xr.camera.nearClip);
-            const to = app.xr.camera.screenToWorld(event.x, event.y, app.xr.camera.farClip);
-
-            const result = app.systems.rigidbody.raycastFirst(from, to);
-            if (result) {
-                const pickedEntity = result.entity;
-                pickedEntity.model.material.diffuse = new pc.Color(Math.random(), Math.random(), .5);
-                material.update();
-            }
-        });
     }
 </script>
 
@@ -450,8 +464,8 @@
     {#if showFooter || hasLostTracking}
         <footer>
             {#if activeArMode === ARMODES.oscp}
-                <ArCloudOverlay hasPose="{hasPose}" isLocalizing="{isLocalizing}" isLocalized="{isLocalized}"
-                        on:startLocalisation={startLocalisation} />
+                <ArCloudOverlay hasPose="{firstPoseReceived}" isLocalizing="{isLocalizing}" isLocalized="{isLocalized}"
+                                on:startLocalisation={startLocalisation} />
             {:else if activeArMode === ARMODES.marker}
                 <MarkerOverlay />
             {:else}

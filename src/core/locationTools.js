@@ -13,7 +13,7 @@ import * as h3 from "h3-js";
 import { supportedCountries } from 'ssd-access';
 
 export const toRadians = (degrees) => degrees * Math.PI / 180;
-export const toDegrees = (radians) => radians / Math.PI / 180;
+export const toDegrees = (radians) => radians / Math.PI * 180;
 
 
 /*

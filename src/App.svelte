@@ -15,12 +15,12 @@
     import { getCurrentLocation } from '@src/core/locationTools'
     import * as P2p from '@src/core/p2pnetwork'
 
-    import Dashboard from '@components/Dashboard.svelte';
-    import Overlay from '@components/Overlay.svelte'
-    import Viewer from '@components/Viewer.svelte';
+    import Dashboard from '@components/Dashboard';
+    import Overlay from '@components/Overlay'
+    import Viewer from '@components/Viewer';
 
-    import { arIsAvailable, showDashboard, hasIntroSeen, initialLocation, ssr, arMode, allowP2pNetwork
-        } from './stateStore';
+    import { arIsAvailable, showDashboard, hasIntroSeen, initialLocation, ssr, arMode, allowP2pNetwork,
+        availableP2pServices } from './stateStore';
     import { info, intro, arOkMessage, noArMessage, outro, startedOkLabel, doitOkLabel,
         markerInfo} from './contentStore';
 
@@ -28,6 +28,9 @@
     let showWelcome, showOutro, showMarkerInfo;
     let dashboard, viewer;
     let shouldShowDashboard, shouldShowMarkerInfo, activeArMode;
+
+    let isHeadless = false;
+
 
     $: showAr = $arIsAvailable && !showWelcome && !shouldShowDashboard && !shouldShowMarkerInfo && !showOutro;
 
@@ -63,10 +66,14 @@
         }
     }
 
+    /**
+     * Switch p2p network connection on/off depending on dashboard setting.
+     */
     $: {
-        if ($allowP2pNetwork) {
-            P2p.connect();
-        } else {
+        if ($allowP2pNetwork && $availableP2pServices.length > 0) {
+            const headlessPeerId = $availableP2pServices[0].description;
+            P2p.connect(headlessPeerId);
+        } else if (!isHeadless) {
             P2p.disconnect();
         }
     }
@@ -76,12 +83,24 @@
      * Initial setup of the viewer. Called after the component is first rendered to the DOM.
      */
     onMount(() => {
-        // AR sessions need to be started by user action, so welcome dialog (or the dashboard) is always needed
-        showWelcome = true;
-        showOutro = false;
+        const urlParams = new URLSearchParams(location.search);
 
-        // Delay close of dashboard until next request
-        shouldShowDashboard = $showDashboard;
+        if (urlParams.has('peerid')) {
+            // Start as headless client
+            isHeadless = true;
+            $allowP2pNetwork = true;
+
+            P2p.initialSetup();
+            P2p.connect(urlParams.get('peerid'), true);
+        } else {
+            // Start as AR client
+            // AR sessions need to be started by user action, so welcome dialog (or the dashboard) is always needed
+            showWelcome = true;
+            showOutro = false;
+
+            // Delay close of dashboard until next request
+            shouldShowDashboard = $showDashboard;
+        }
     })
 
     /**
@@ -132,30 +151,40 @@
         showOutro = true;
         shouldShowDashboard = $showDashboard;
     }
+
+    function handleBroadcast(event) {
+        P2p.send(event.detail);
+    }
 </script>
 
 
-<!-- TODO: Replace generic Overlay components with specific content components -->
-{#if shouldShowDashboard && $arIsAvailable}
-    <Dashboard bind:this={dashboard} on:okClicked={startAr} />
-{/if}
+{#if !isHeadless}
+    <!-- TODO: Replace generic Overlay components with specific content components -->
+    {#if shouldShowDashboard && $arIsAvailable}
+        <Dashboard bind:this={dashboard} on:okClicked={startAr} />
+    {/if}
 
-{#if showWelcome}
-    <Overlay withOkFooter="{$arIsAvailable && activeArMode !== ARMODES.auto}" okButtonLabel="{$startedOkLabel}" on:okAction={closeIntro}>
-        <div slot="content">{@html $hasIntroSeen ? $info : $intro}</div>
-        <div slot="message">{@html $arIsAvailable ? $arOkMessage : $noArMessage}</div>
-    </Overlay>
+    {#if showWelcome}
+        <Overlay withOkFooter="{$arIsAvailable && activeArMode !== ARMODES.auto}" okButtonLabel="{$startedOkLabel}" on:okAction={closeIntro}>
+            <div slot="content">{@html $hasIntroSeen ? $info : $intro}</div>
+            <div slot="message">{@html $arIsAvailable ? $arOkMessage : $noArMessage}</div>
+        </Overlay>
 
-{:else if showOutro}
-    <Overlay withOkFooter="{true}" okButtonLabel="{$doitOkLabel}" on:okAction={closeIntro}>
-        <div slot="content">{@html $outro}</div>
-    </Overlay>
+    {:else if showOutro}
+        <Overlay withOkFooter="{true}" okButtonLabel="{$doitOkLabel}" on:okAction={closeIntro}>
+            <div slot="content">{@html $outro}</div>
+        </Overlay>
 
-{:else if shouldShowMarkerInfo}
-    <Overlay withOkFooter="{true}" okButtonLabel="{$doitOkLabel}" on:okAction={closeMarker}>
-        <div slot="content">{@html $markerInfo}</div>
-    </Overlay>
+    {:else if shouldShowMarkerInfo}
+        <Overlay withOkFooter="{true}" okButtonLabel="{$doitOkLabel}" on:okAction={closeMarker}>
+            <div slot="content">{@html $markerInfo}</div>
+        </Overlay>
 
-{:else if showAr}
-    <Viewer bind:this={viewer} activeArMode="{activeArMode}" on:arSessionEnded={sessionEnded} />
+    {:else if showAr}
+        <Viewer bind:this={viewer} activeArMode="{activeArMode}"
+                on:arSessionEnded={sessionEnded} on:broadcast={handleBroadcast} />
+    {/if}
+{:else}
+    <h1>Headless Mode</h1>
+<!--  Display current Docset  -->
 {/if}
