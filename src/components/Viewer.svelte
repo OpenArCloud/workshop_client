@@ -51,7 +51,10 @@
     let tester;
 
 
-    // Setup default content of scene
+
+    /**
+     * Setup default content of scene that should be created when WebXR reports the first successful pose
+     */
     $: {
         if (firstPoseReceived && tester === undefined) {
             // Testing object for p2p
@@ -155,7 +158,7 @@
             tester.model.material.diffuse = new pc.Color(newColors);
             tester.model.material.update();
 
-            // TODO: Needs to be parametrized
+            // TODO: Needs to be parametrized with data received from SCD
             dispatch('broadcast', {
                 event: 'color',
                 value: newColors
@@ -163,9 +166,13 @@
         }
     }
 
+    /**
+     * Receives data from the application to be applied to current scene.
+     */
     export function updateReceived(data) {
         console.log('viewer update received');
 
+        // TODO: Needs to be parametrized with data received from SCD
         const tester = app.root.findByName('tester');
         tester.model.material.diffuse = new pc.Color(data.color[0], data.color[1], data.color[2]);
         tester.model.material.update();
@@ -471,6 +478,7 @@
 
 <canvas id='application' bind:this={canvas}></canvas>
 <aside bind:this={overlay} on:beforexrselect={(event) => event.preventDefault()}>
+    <!--  Space for UI elements  -->
     {#if showFooter || hasLostTracking}
         <footer>
             {#if activeArMode === ARMODES.oscp}

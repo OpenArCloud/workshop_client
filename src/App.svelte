@@ -33,6 +33,9 @@
     let currentSharedValues = {};
 
 
+    /**
+     * Reactive function to define if the AR viewer can be shown.
+     */
     $: showAr = $arIsAvailable && !showWelcome && !shouldShowDashboard && !shouldShowMarkerInfo && !showOutro;
 
     /**
@@ -158,6 +161,11 @@
         shouldShowDashboard = $showDashboard;
     }
 
+    /**
+     * Handles broadcast events from other components.
+     *
+     * @param event  Event      Svelte event type, contains values to broadcast in the detail property
+     */
     function handleBroadcast(event) {
         P2p.send(event.detail);
     }
@@ -191,7 +199,7 @@
                 on:arSessionEnded={sessionEnded} on:broadcast={handleBroadcast} />
     {/if}
 {:else}
-    <!-- Just for development -->
+    <!-- Just for development to verify some internal values -->
     <h1>Headless Mode</h1>
     <pre>{JSON.stringify(currentSharedValues, null, 2)}</pre>
 {/if}

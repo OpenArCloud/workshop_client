@@ -3,6 +3,10 @@
   This code is licensed under MIT license (see LICENSE for details)
 */
 
+/*
+    Uses perge, peerjs and automerge to synchronize values between peers over a peer to peer network.
+ */
+
 import { v4 as uuidv4 } from 'uuid';
 import Perge from 'perge';
 import Automerge, {change} from 'automerge'
@@ -15,13 +19,24 @@ const docSet = new Automerge.DocSet();
 let updateFunction;
 
 
+/**
+ * Can be used to put initial values into the docset.
+ */
 export function initialSetup() {
     // TODO: Add initial values to the docset
 }
 
+/**
+ * Connects to the signaling server, to allow other devices to connect to this one.
+ *
+ * A headless client just registers itself at the signaling server, regular clients also connect to the headless client
+ * when allowed by respective global setting.
+ *
+ * @param headlessPeerId  String        The peer ID of the headless client
+ * @param isHeadless  boolean       true when the current device should be set up as headless client
+ * @param updateftn  Function       Function to call when updated values arrived
+ */
 export function connect(headlessPeerId, isHeadless = false, updateftn) {
-    console.log('connect', headlessPeerId);
-
     updateFunction = updateftn;
 
     const localPeerId = isHeadless ? headlessPeerId :uuidv4();
@@ -30,18 +45,28 @@ export function connect(headlessPeerId, isHeadless = false, updateftn) {
     setupPeerEvents(headlessPeerId, isHeadless);
 }
 
+/**
+ * Disconnect the device from the peer to peer network.
+ */
 export function disconnect() {
+    // TODO: Implement
     console.log('disconnect');
 }
 
-export function send(message) {
-    console.log(message);
-
+/**
+ * Send data out to other connected devices.
+ *
+ * @param data      The data as Javascript types to send out. Will be stringified later
+ */
+export function send(data) {
     instance.select('event')(change, doc => {
-        doc[message.event] = message.value;
+        doc[data.event] = data.value;
     })
 }
 
+/**
+ * Called when an update was received over the network.
+ */
 function updateReceived() {
     console.log('Received', JSON.stringify(docSet.docs, null, 2));
 
@@ -51,6 +76,11 @@ function updateReceived() {
     }
 }
 
+/**
+ * Set up Perge, which connects peerjs and automerge.
+ *
+ * @param peerId  String        The peer ID to register with on the signaling server
+ */
 function setupPerge(peerId) {
     const peer = new Peer(peerId, {
         host:'peerjs-server.herokuapp.com', secure:true, port:443
@@ -69,6 +99,14 @@ function setupPerge(peerId) {
     })
 }
 
+/**
+ * Sets up all the available events of Peerjs.
+ *
+ * Currently only used to connect this device to an headless client
+ *
+ * @param headlessPeerId  String        The headless client to connect to
+ * @param isHeadless  boolean       true when this client is an headless client, false otherwise
+ */
 function setupPeerEvents(headlessPeerId, isHeadless) {
     //Emitted when a connection to the PeerServer is established.
     instance.peer.on('open', (id) => {
