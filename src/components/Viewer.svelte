@@ -9,8 +9,7 @@
 <script>
     import { createEventDispatcher } from 'svelte';
 
-    import '@thirdparty/playcanvas.min';
-
+    import '@thirdparty/playcanvas.dbg.js';
     import {v4 as uuidv4} from 'uuid';
 
     import { sendRequest, objectEndpoint, validateRequest } from 'gpp-access';
@@ -102,7 +101,6 @@
             message("Immersive AR session has ended");
 
             app = null;
-            firstPoseReceived = false;
             dispatch('arSessionEnded');
         });
 
@@ -141,25 +139,11 @@
         light.translate(0, 10, 0);
         app.root.addChild(light);
 
-        app.scene.ambientLight = new pc.Color(0.5, 0.5, 0.5);
-
-        app.mouse.on(pc.EVENT_MOUSEUP, onMouseClick);
+        if ($debug_showLocationAxis) {
+            addAxes(app);
+        }
 
         return camera.camera;
-    }
-
-
-    function onMouseClick(event) {
-        if (tester) {
-            const newColors = [Math.random(), Math.random(), Math.random()];
-            tester.model.material.diffuse = new pc.Color(newColors);
-            tester.model.material.update();
-
-            dispatch('broadcast', {
-                event: 'color',
-                value: newColors
-            });
-        }
     }
 
     /**
@@ -250,15 +234,11 @@
             handlePoseHeartbeat();
 
             if (activeArMode === ARMODES.oscp) {
-                firstPoseReceived = true;
+                hasPose = true;
                 handlePose(localPose, frame);
             } else if (activeArMode === ARMODES.marker) {
                 handleMarker();
             }
-        }
-
-        if (tester) {
-            tester.rotateLocal(0.3, 0, 0.1);
         }
     }
 
@@ -464,8 +444,8 @@
     {#if showFooter || hasLostTracking}
         <footer>
             {#if activeArMode === ARMODES.oscp}
-                <ArCloudOverlay hasPose="{firstPoseReceived}" isLocalizing="{isLocalizing}" isLocalized="{isLocalized}"
-                                on:startLocalisation={startLocalisation} />
+                <ArCloudOverlay hasPose="{hasPose}" isLocalizing="{isLocalizing}" isLocalized="{isLocalized}"
+                        on:startLocalisation={startLocalisation} />
             {:else if activeArMode === ARMODES.marker}
                 <MarkerOverlay />
             {:else}

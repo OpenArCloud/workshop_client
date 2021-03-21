@@ -12,7 +12,7 @@ import { quat, vec3 } from 'gl-matrix';
 import * as h3 from "h3-js";
 import { supportedCountries } from 'ssd-access';
 
-export const toRadians = (degrees) => degrees * Math.PI / 180;
+export const toRadians = (degrees) => degrees / 180 * Math.PI;
 export const toDegrees = (radians) => radians / Math.PI * 180;
 
 
@@ -237,12 +237,12 @@ export function calculateRotation(localisationQuaternion, localQuaternion) {
     const local = quat.fromValues(localQuaternion.x, localQuaternion.y, localQuaternion.z, localQuaternion.w);
 
     const localInv = quat.create();
-    quat.invert(localInv , global);
+    quat.invert(localInv , local);
 
-    const diff = quat.create();
-    quat.multiply(diff , global, localInv);
+    const result = quat.create();
+    quat.multiply(result , global, local);
 
-    return diff;
+    return result;
 }
 
 
