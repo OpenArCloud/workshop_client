@@ -9,7 +9,7 @@
 <script>
     import { createEventDispatcher } from 'svelte';
 
-    import '@thirdparty/playcanvas.min.js';
+    import '@thirdparty/playcanvas.dbg.js';
     import {v4 as uuidv4} from 'uuid';
 
     import { sendRequest, objectEndpoint, validateRequest } from 'gpp-access';
@@ -22,7 +22,7 @@
         debug_appendCameraImage, debug_showLocationAxis, debug_useLocalServerResponse} from '@src/stateStore';
     import { wait, ARMODES, debounce } from "@core/common";
     import { createModel, createPlaceholder, addAxes } from '@core/modelTemplates';
-    import { calculateDistance, fakeLocationResult, calculateEulerRotation, toDegrees } from '@core/locationTools';
+    import { calculateDistance, fakeLocationResult, calculateRotation, toDegrees } from '@core/locationTools';
 
     import { initCameraCaptureScene, drawCameraCaptureScene, createImageFromTexture } from '@core/cameraCapture';
     import ArCloudOverlay from "./dom-overlays/ArCloudOverlay.svelte";
@@ -259,7 +259,7 @@
         for (let view of localPose.views) {
             let viewport = app.xr.session.renderState.baseLayer.getViewport(view);
             gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
-            
+
             // NOTE: if we do not draw anything on pose update for more than 5 frames, Chrome's WebXR sends warnings
             // See OnFrameEnd() in https://chromium.googlesource.com/chromium/src/third_party/+/master/blink/renderer/modules/xr/xr_webgl_layer.cc
 
@@ -278,7 +278,7 @@
                 // TODO: try to queue the camera capture code on XRSession.requestAnimationFrame()
 
                 const image = createImageFromTexture(gl, cameraTexture, viewport.width, viewport.height);
-                
+
                 if ($debug_appendCameraImage) {
                     // DEBUG: verify if the image was captured correctly
                     const img = new Image();
@@ -363,15 +363,15 @@
             if (record.content.type === 'placeholder') {
                 const contentPosition = calculateDistance(globalPose, objectPose);
                 const placeholder = createPlaceholder(record.content.keywords);
+                app.root.addChild(placeholder);
+
                 placeholder.setPosition(contentPosition.x + localPosition.x,
                                         contentPosition.y + localPosition.y,
                                         contentPosition.z + localPosition.z);
-
-                const rotation = calculateEulerRotation(globalPose.quaternion, localPose.transform.orientation);
-                placeholder.rotate(toDegrees(rotation[0]), toDegrees(rotation[1]), toDegrees(rotation[2]));
-
                 console.log("placeholder at: " + contentPosition.x + ", " + contentPosition.y + ", " +  contentPosition.z);
-                app.root.addChild(placeholder);
+
+                const rotation = calculateRotation(globalPose.quaternion, localPose.transform.orientation);
+                placeholder.setRotation(rotation);
             }
         })
     }
