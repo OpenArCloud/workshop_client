@@ -22,7 +22,7 @@
         debug_appendCameraImage, debug_showLocationAxis, debug_useLocalServerResponse} from '@src/stateStore';
     import { wait, ARMODES, debounce } from "@core/common";
     import { createModel, createPlaceholder, addAxes } from '@core/modelTemplates';
-    import { calculateDistance, fakeLocationResult, calculateRotation, toDegrees } from '@core/locationTools';
+    import { calculateDistance, fakeLocationResult, calculateRotation } from '@core/locationTools';
 
     import { initCameraCaptureScene, drawCameraCaptureScene, createImageFromTexture } from '@core/cameraCapture';
     import ArCloudOverlay from "./dom-overlays/ArCloudOverlay.svelte";
@@ -48,28 +48,15 @@
     let poseFoundHeartbeat = null;
 
     // TODO: Setup event target array, based on info received from SCD
-    let tester;
-
 
 
     /**
      * Setup default content of scene that should be created when WebXR reports the first successful pose
      */
     $: {
-        if (firstPoseReceived && tester === undefined) {
-            // Testing object for p2p
-            const material = new pc.StandardMaterial();
-            material.diffuse = new pc.Color(Math.random(), Math.random(), .5);
-            material.update();
-
-            tester = createModel();
-            tester.name = 'tester';
-            tester.setLocalScale(1, 1, 1);
-            tester.setPosition(0, 1, -3);
-            tester.model.material = material;
-            app.root.addChild(tester)
-
+        if (firstPoseReceived) {
             if ($debug_showLocationAxis) {
+                // TODO: Don't provide app to function. Return objects and add them here to the scene
                 addAxes(app);
             }
         }
@@ -146,24 +133,7 @@
 
         app.scene.ambientLight = new pc.Color(0.5, 0.5, 0.5);
 
-        app.mouse.on(pc.EVENT_MOUSEUP, onMouseClick);
-
         return camera.camera;
-    }
-
-
-    function onMouseClick(event) {
-        if (tester) {
-            const newColors = [Math.random(), Math.random(), Math.random()];
-            tester.model.material.diffuse = new pc.Color(newColors);
-            tester.model.material.update();
-
-            // TODO: Needs to be parametrized with data received from SCD
-            dispatch('broadcast', {
-                event: 'color',
-                value: newColors
-            });
-        }
     }
 
     /**
@@ -172,10 +142,7 @@
     export function updateReceived(data) {
         console.log('viewer update received');
 
-        // TODO: Needs to be parametrized with data received from SCD
-        const tester = app.root.findByName('tester');
-        tester.model.material.diffuse = new pc.Color(data.color[0], data.color[1], data.color[2]);
-        tester.model.material.update();
+        // TODO: Set the data to the respective objects
     }
 
 
@@ -272,10 +239,6 @@
             } else if (activeArMode === ARMODES.marker) {
                 handleMarker();
             }
-        }
-
-        if (tester) {
-            tester.rotateLocal(0.3, 0, 0.1);
         }
     }
 
