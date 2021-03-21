@@ -22,7 +22,7 @@
         debug_appendCameraImage, debug_showLocationAxis, debug_useLocalServerResponse} from '@src/stateStore';
     import { wait, ARMODES, debounce } from "@core/common";
     import { createModel, createPlaceholder, addAxes } from '@core/modelTemplates';
-    import { calculateDistance, fakeLocationResult, calculateRotation, toDegrees } from '@core/locationTools';
+    import { calculateDistance, fakeLocationResult, calculateRotation } from '@core/locationTools';
 
     import { initCameraCaptureScene, drawCameraCaptureScene, createImageFromTexture } from '@core/cameraCapture';
     import ArCloudOverlay from "./dom-overlays/ArCloudOverlay.svelte";
@@ -41,11 +41,26 @@
     let app;
 
     let doCaptureImage = false;
-    let showFooter = false, hasPose = false, isLocalizing = false, isLocalized = false, hasLostTracking = false;
+    let showFooter = false, firstPoseReceived = false, isLocalizing = false, isLocalized = false, hasLostTracking = false;
 
     let xrRefSpace = null, gl = null, glBinding = null;
     let trackedImage, trackedImageObject;
     let poseFoundHeartbeat = null;
+
+    // TODO: Setup event target array, based on info received from SCD
+
+
+    /**
+     * Setup default content of scene that should be created when WebXR reports the first successful pose
+     */
+    $: {
+        if (firstPoseReceived) {
+            if ($debug_showLocationAxis) {
+                // TODO: Don't provide app to function. Return objects and add them here to the scene
+                addAxes(app);
+            }
+        }
+    }
 
 
     /**
@@ -77,6 +92,7 @@
             message("Immersive AR session has ended");
 
             app = null;
+            firstPoseReceived = false;
             dispatch('arSessionEnded');
         });
 
@@ -115,12 +131,20 @@
         light.translate(0, 10, 0);
         app.root.addChild(light);
 
-        if ($debug_showLocationAxis) {
-            addAxes(app);
-        }
+        app.scene.ambientLight = new pc.Color(0.5, 0.5, 0.5);
 
         return camera.camera;
     }
+
+    /**
+     * Receives data from the application to be applied to current scene.
+     */
+    export function updateReceived(data) {
+        console.log('viewer update received');
+
+        // TODO: Set the data to the respective objects
+    }
+
 
     /**
      * Setup required AR features and start the XRSession.
@@ -210,7 +234,7 @@
             handlePoseHeartbeat();
 
             if (activeArMode === ARMODES.oscp) {
-                hasPose = true;
+                firstPoseReceived = true;
                 handlePose(localPose, frame);
             } else if (activeArMode === ARMODES.marker) {
                 handleMarker();
@@ -363,15 +387,15 @@
             if (record.content.type === 'placeholder') {
                 const contentPosition = calculateDistance(globalPose, objectPose);
                 const placeholder = createPlaceholder(record.content.keywords);
-                app.root.addChild(placeholder);
-
                 placeholder.setPosition(contentPosition.x + localPosition.x,
                                         contentPosition.y + localPosition.y,
                                         contentPosition.z + localPosition.z);
-                console.log("placeholder at: " + contentPosition.x + ", " + contentPosition.y + ", " +  contentPosition.z);
 
                 const rotation = calculateRotation(globalPose.quaternion, localPose.transform.orientation);
                 placeholder.setRotation(rotation);
+
+                console.log("placeholder at: " + contentPosition.x + ", " + contentPosition.y + ", " +  contentPosition.z);
+                app.root.addChild(placeholder);
             }
         })
     }
@@ -417,10 +441,11 @@
 
 <canvas id='application' bind:this={canvas}></canvas>
 <aside bind:this={overlay} on:beforexrselect={(event) => event.preventDefault()}>
+    <!--  Space for UI elements  -->
     {#if showFooter || hasLostTracking}
         <footer>
             {#if activeArMode === ARMODES.oscp}
-                <ArCloudOverlay hasPose="{hasPose}" isLocalizing="{isLocalizing}" isLocalized="{isLocalized}"
+                <ArCloudOverlay hasPose="{firstPoseReceived}" isLocalizing="{isLocalizing}" isLocalized="{isLocalized}"
                         on:startLocalisation={startLocalisation} />
             {:else if activeArMode === ARMODES.marker}
                 <MarkerOverlay />
