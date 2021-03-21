@@ -15,9 +15,9 @@
     import { getCurrentLocation } from '@src/core/locationTools'
     import * as P2p from '@src/core/p2pnetwork'
 
-    import Dashboard from '@components/Dashboard';
-    import Overlay from '@components/Overlay'
-    import Viewer from '@components/Viewer';
+    import Dashboard from '@components/Dashboard.svelte';
+    import Overlay from '@components/Overlay.svelte'
+    import Viewer from '@components/Viewer.svelte';
 
     import { arIsAvailable, showDashboard, hasIntroSeen, initialLocation, ssr, arMode, allowP2pNetwork,
         availableP2pServices } from './stateStore';
@@ -30,6 +30,7 @@
     let shouldShowDashboard, shouldShowMarkerInfo, activeArMode;
 
     let isHeadless = false;
+    let currentSharedValues = {};
 
 
     $: showAr = $arIsAvailable && !showWelcome && !shouldShowDashboard && !shouldShowMarkerInfo && !showOutro;
@@ -72,7 +73,9 @@
     $: {
         if ($allowP2pNetwork && $availableP2pServices.length > 0) {
             const headlessPeerId = $availableP2pServices[0].description;
-            P2p.connect(headlessPeerId);
+            P2p.connect(headlessPeerId, false, (data) => {
+                viewer.updateReceived(data);
+            });
         } else if (!isHeadless) {
             P2p.disconnect();
         }
@@ -91,7 +94,10 @@
             $allowP2pNetwork = true;
 
             P2p.initialSetup();
-            P2p.connect(urlParams.get('peerid'), true);
+            P2p.connect(urlParams.get('peerid'), true, (data) => {
+                // Just for development
+                currentSharedValues = data;
+            });
         } else {
             // Start as AR client
             // AR sessions need to be started by user action, so welcome dialog (or the dashboard) is always needed
@@ -185,6 +191,7 @@
                 on:arSessionEnded={sessionEnded} on:broadcast={handleBroadcast} />
     {/if}
 {:else}
+    <!-- Just for development -->
     <h1>Headless Mode</h1>
-<!--  Display current Docset  -->
+    <pre>{JSON.stringify(currentSharedValues, null, 2)}</pre>
 {/if}

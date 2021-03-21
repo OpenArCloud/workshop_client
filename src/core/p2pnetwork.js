@@ -12,13 +12,17 @@ import Peer from 'peerjs';
 let instance;
 const docSet = new Automerge.DocSet();
 
+let updateFunction;
+
 
 export function initialSetup() {
-    // Add inital values to the docset
+    // TODO: Add initial values to the docset
 }
 
-export function connect(headlessPeerId, isHeadless = false) {
+export function connect(headlessPeerId, isHeadless = false, updateftn) {
     console.log('connect', headlessPeerId);
+
+    updateFunction = updateftn;
 
     const localPeerId = isHeadless ? headlessPeerId :uuidv4();
 
@@ -38,8 +42,13 @@ export function send(message) {
     })
 }
 
-function receive(doc) {
-    console.log('Received', JSON.stringify(doc, null, 2));
+function updateReceived() {
+    console.log('Received', JSON.stringify(docSet.docs, null, 2));
+
+    if (updateFunction) {
+        // TODO: There has to be a better way to get to the content of a doc
+        updateFunction(JSON.parse(JSON.stringify(docSet.docs)).event);
+    }
 }
 
 function setupPerge(peerId) {
@@ -56,7 +65,7 @@ function setupPerge(peerId) {
 
     instance.subscribe(() => {
         console.log('instance.subscribe');
-        console.log('subscribe', JSON.stringify(docSet.docs, null, 2));
+        updateReceived();
     })
 }
 
@@ -74,11 +83,6 @@ function setupPeerEvents(headlessPeerId, isHeadless) {
     // Emitted when a new data connection is established from a remote peer.
     instance.peer.on('connection', (connection) => {
         console.log('Connection established with remote peer: ' + connection.peer);
-
-        connection.on('data', function (data) {
-            console.log('connection.on');
-            receive(data);
-        });
     });
 
     // Errors on the peer are almost always fatal and will destroy the peer.

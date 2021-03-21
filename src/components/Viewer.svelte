@@ -22,7 +22,7 @@
         debug_appendCameraImage, debug_showLocationAxis, debug_useLocalServerResponse} from '@src/stateStore';
     import { wait, ARMODES, debounce } from "@core/common";
     import { createModel, createPlaceholder, addAxes } from '@core/modelTemplates';
-    import { calculateDistance, fakeLocationResult, calculateEulerRotation, toDegrees } from '@core/locationTools';
+    import { calculateDistance, fakeLocationResult, calculateRotation, toDegrees } from '@core/locationTools';
 
     import { initCameraCaptureScene, drawCameraCaptureScene, createImageFromTexture } from '@core/cameraCapture';
     import ArCloudOverlay from "./dom-overlays/ArCloudOverlay.svelte";
@@ -60,6 +60,7 @@
             material.update();
 
             tester = createModel();
+            tester.name = 'tester';
             tester.setLocalScale(1, 1, 1);
             tester.setPosition(0, 1, -3);
             tester.model.material = material;
@@ -101,6 +102,7 @@
             message("Immersive AR session has ended");
 
             app = null;
+            firstPoseReceived = false;
             dispatch('arSessionEnded');
         });
 
@@ -139,12 +141,36 @@
         light.translate(0, 10, 0);
         app.root.addChild(light);
 
-        if ($debug_showLocationAxis) {
-            addAxes(app);
-        }
+        app.scene.ambientLight = new pc.Color(0.5, 0.5, 0.5);
+
+        app.mouse.on(pc.EVENT_MOUSEUP, onMouseClick);
 
         return camera.camera;
     }
+
+
+    function onMouseClick(event) {
+        if (tester) {
+            const newColors = [Math.random(), Math.random(), Math.random()];
+            tester.model.material.diffuse = new pc.Color(newColors);
+            tester.model.material.update();
+
+            // TODO: Needs to be parametrized
+            dispatch('broadcast', {
+                event: 'color',
+                value: newColors
+            });
+        }
+    }
+
+    export function updateReceived(data) {
+        console.log('viewer update received');
+
+        const tester = app.root.findByName('tester');
+        tester.model.material.diffuse = new pc.Color(data.color[0], data.color[1], data.color[2]);
+        tester.model.material.update();
+    }
+
 
     /**
      * Setup required AR features and start the XRSession.
@@ -234,11 +260,15 @@
             handlePoseHeartbeat();
 
             if (activeArMode === ARMODES.oscp) {
-                hasPose = true;
+                firstPoseReceived = true;
                 handlePose(localPose, frame);
             } else if (activeArMode === ARMODES.marker) {
                 handleMarker();
             }
+        }
+
+        if (tester) {
+            tester.rotateLocal(0.3, 0, 0.1);
         }
     }
 
@@ -391,8 +421,8 @@
                                         contentPosition.y + localPosition.y,
                                         contentPosition.z + localPosition.z);
 
-                const rotation = calculateEulerRotation(globalPose.quaternion, localPose.transform.orientation);
-                placeholder.rotate(toDegrees(rotation[0]), toDegrees(rotation[1]), toDegrees(rotation[2]));
+                const rotation = calculateRotation(globalPose.quaternion, localPose.transform.orientation);
+                placeholder.setRotation(rotation);
 
                 console.log("placeholder at: " + contentPosition.x + ", " + contentPosition.y + ", " +  contentPosition.z);
                 app.root.addChild(placeholder);
@@ -444,7 +474,7 @@
     {#if showFooter || hasLostTracking}
         <footer>
             {#if activeArMode === ARMODES.oscp}
-                <ArCloudOverlay hasPose="{hasPose}" isLocalizing="{isLocalizing}" isLocalized="{isLocalized}"
+                <ArCloudOverlay hasPose="{firstPoseReceived}" isLocalizing="{isLocalizing}" isLocalized="{isLocalized}"
                         on:startLocalisation={startLocalisation} />
             {:else if activeArMode === ARMODES.marker}
                 <MarkerOverlay />
