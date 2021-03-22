@@ -380,22 +380,27 @@
         const localPosition = localPose.transform.position;
 
         scr.forEach(record => {
+            const container = new pc.Entity();
+            container.setPosition(localPosition.x, localPosition.y, localPosition.z);
+            app.root.addChild(container);
+
             // Augmented City special path for the GeoPose. Should be just 'record.content.geopose'
             const objectPose = record.content.geopose.pose;
 
             // This is difficult to generalize, because there are no types defined yet.
             if (record.content.type === 'placeholder') {
-                const contentPosition = calculateDistance(globalPose, objectPose);
                 const placeholder = createPlaceholder(record.content.keywords);
+                container.addChild(placeholder);
+
+                const contentPosition = calculateDistance(globalPose, objectPose);
                 placeholder.setPosition(contentPosition.x + localPosition.x,
                                         contentPosition.y + localPosition.y,
                                         contentPosition.z + localPosition.z);
 
                 const rotation = calculateRotation(globalPose.quaternion, localPose.transform.orientation);
-                placeholder.setRotation(rotation);
+                container.setRotation(rotation[0], rotation[1], rotation[2], rotation[3]);
 
                 console.log("placeholder at: " + contentPosition.x + ", " + contentPosition.y + ", " +  contentPosition.z);
-                app.root.addChild(placeholder);
             }
         })
     }
