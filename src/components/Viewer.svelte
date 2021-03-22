@@ -482,8 +482,6 @@
     {#if showFooter || hasLostTracking}
         <footer>
             {#if activeArMode === ARMODES.oscp}
-                <ArCloudOverlay hasPose="{firstPoseReceived}" isLocalizing="{isLocalizing}" isLocalized="{isLocalized}"
-                        on:startLocalisation={startLocalisation} />
             {:else if activeArMode === ARMODES.marker}
                 <MarkerOverlay />
             {:else}

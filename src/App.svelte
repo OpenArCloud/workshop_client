@@ -51,17 +51,7 @@
                     return getServicesAtLocation(currentLocation.regionCode, currentLocation.h3Index)
                 })
                 .then(services => {
-                    if ($arMode === ARMODES.auto) {
-                        if (services.length !== 0) {
-                            $ssr = services;
-                            activeArMode = ARMODES.oscp;
-                        } else {
-                            activeArMode = ARMODES.marker
-                            shouldShowMarkerInfo = true;
-                        }
-                    } else {
-                        activeArMode = $arMode;
-                    }
+                    activeArMode = ARMODES.oscp;
                 })
                 .catch(error => {
                     // TODO: Inform user
@@ -74,8 +64,8 @@
      * Switch p2p network connection on/off depending on dashboard setting.
      */
     $: {
-        if ($allowP2pNetwork && $availableP2pServices.length > 0) {
-            const headlessPeerId = $availableP2pServices[0].description;
+        if ($allowP2pNetwork && !isHeadless) {
+            const headlessPeerId = 'P2PMaster';
             P2p.connect(headlessPeerId, false, (data) => {
                 viewer.updateReceived(data);
             });
