@@ -26,8 +26,124 @@
 
 
 <style>
+    h2 {
+        margin-top: 60px;
+        color: var(--theme-highlight);
+    }
+
     button {
-        margin: 50px;
+        width: 100%;
+        height: 50px;
+
+        border: 2px solid var(--theme-color);
+
+        text-transform: uppercase;
+        font-weight: bold;
+        font-size: 25px;
+        letter-spacing: 0;
+
+        background-color: white;
+    }
+
+    dt, .label {
+        height: 20px;
+
+        margin-bottom: 6px;
+
+        font-weight: bold;
+        text-align: left;
+    }
+
+    dd, .value {
+        display: flex;
+        align-items: center;
+
+        margin-left: 0;
+        margin-bottom: 20px;
+        padding-left: 40px;
+
+        height: 39px;
+        border: 1px solid var(--theme-color);
+    }
+
+    dd.list {
+        border: 0;
+        padding: 0;
+    }
+
+    dd.list input {
+        width: 100%;
+        height: 39px;
+
+        margin-top: 6px;
+        padding-left: 40px;
+
+        font-size: 18px;
+    }
+
+    dd.unitinput {
+        padding: 3px;
+    }
+
+    dd.unitinput input {
+        width: 100%;
+        height: 37px;
+
+        padding-left: 40px;
+
+        border: 0;
+    }
+
+    dl.radio {
+        margin-top: 35px;
+        margin-bottom: 60px;
+    }
+
+    dl.radio dd {
+        height: 22px;
+
+        padding-left: 0;
+        border: 0;
+    }
+
+    dd.select {
+        border: 0;
+        padding: 0;
+    }
+
+    input[type=checkbox] {
+        margin-bottom: 14px;
+    }
+
+    select {
+        width: 100%;
+        height: 39px;
+
+        margin: 0;
+        padding-left: 30px;
+
+        border: 0;
+
+        font-size: 18px;
+        color: white;
+
+        background: var(--theme-color) 0 0 no-repeat padding-box;
+
+    }
+
+    pre {
+        margin: 5px;
+    }
+
+    #showagain {
+        margin-top: 20px;
+        margin-bottom: 26px;
+    }
+
+    .autoheight {
+        height: initial;
+
+        padding: 0;
     }
 </style>
 
@@ -52,10 +168,10 @@
     <dd>{$initialLocation.countryCode}</dd>
     <dt>OSCP Region</dt>
     <!--  TODO: Might make sense to do some validation here  -->
-    <dd><input list="supported-countries" bind:value={$initialLocation.regionCode} /></dd>
+    <dd class="list"><input list="supported-countries" bind:value={$initialLocation.regionCode} /></dd>
 </dl>
 
-<dl>
+<dl class="radio">
     <dt>AR mode</dt>
     <dd>
         <input id="armodeoscp" type="radio" bind:group={$arMode} value="{ARMODES.oscp}"
@@ -74,7 +190,7 @@
 
 <dl>
     <dt>GeoPose Server</dt>
-    <dd><select bind:value={$selectedGeoPoseService} disabled="{$availableGeoPoseServices.length < 2  || null}">
+    <dd class="select"><select bind:value={$selectedGeoPoseService} disabled="{$availableGeoPoseServices.length < 2  || null}">
         {#if $availableGeoPoseServices.length === 0}
             <option>None</option>
         {:else}
@@ -87,7 +203,7 @@
 
 <dl>
     <dt>Recent GeoPose</dt>
-    <dd><pre>{JSON.stringify($recentLocalisation.geopose, null, 2)}</pre></dd>
+    <dd class="autoheight"><pre>{JSON.stringify($recentLocalisation.geopose, null, 2)}</pre></dd>
 <!--    TODO: Values aren't displayed for some reason. Fix. -->
 <!--    <dt>at</dt>-->
 <!--    <dd><pre>{JSON.stringify($recentLocalisation.localpose, null, 2)}</pre></dd>-->
@@ -95,7 +211,7 @@
 
 <dl>
     <dt>Content Server</dt>
-    <dd><select bind:value={$selectedContentService} disabled="{$availableContentServices.length < 2  || null}">
+    <dd class="select"><select bind:value={$selectedContentService} disabled="{$availableContentServices.length < 2  || null}">
         {#if $availableContentServices.length === 0}
             <option>None</option>
         {:else}
@@ -108,7 +224,7 @@
 
 <dl>
     <dt>P2P Service</dt>
-    <dd><select bind:value={$selectedP2pService} disabled="{$availableP2pServices.length < 2  || null}">
+    <dd class="select"><select bind:value={$selectedP2pService} disabled="{$availableP2pServices.length < 2  || null}">
         {#if $availableP2pServices.length === 0}
             <option>None</option>
         {:else}
@@ -123,16 +239,21 @@
     <dt>Marker image</dt>
     <dd>{$currentMarkerImage}</dd>
     <dt>Width</dt>
-    <dd><input type="number" bind:value={$currentMarkerImageWidth} />m</dd>
+    <dd class="unitinput"><input type="number" bind:value={$currentMarkerImageWidth} />m</dd>
 </dl>
 
-<p>Headless available (y/n)</p>
-
+<h2>Multiplayer</h2>
 <div>
     <input id="allowP2p" type="checkbox" bind:checked={$allowP2pNetwork} />
-    <label for="allowP2p">Connect to local p2p network</label>
-    <p>{$p2pNetworkState}</p>
+    <label for="allowP2p">Connect to p2p network</label>
 </div>
+
+<dl>
+    <dt>Connection status</dt>
+    <dd>{$p2pNetworkState}</dd>
+</dl>
+
+
 
 <h2>Debug settings</h2>
 

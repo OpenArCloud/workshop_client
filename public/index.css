@@ -1,14 +1,17 @@
 /* Global css styles */
 
 :root {
-  --ui-margin: 20px;
-  --ui-radius: 20px;
+  --theme-color: #2E4458;
+  --theme-highlight: #EB6138;
+
+  --ui-margin: 32px;
+  --ui-radius: 14px;
   --ui-shadow: 5px 5px 10px 0 black;
   --ui-max-width: 400px;
   --ui-max-height: 600px;
 
-  --button-width: 200px;
-  --button-height: 45px;
+  --button-width: 293px;
+  --button-height: 49px;
 
   --footer-top-margin: 30px;
 

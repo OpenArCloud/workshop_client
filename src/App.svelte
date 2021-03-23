@@ -24,7 +24,6 @@
 
     import { arIsAvailable, showDashboard, hasIntroSeen, initialLocation, ssr, arMode, allowP2pNetwork,
         availableP2pServices } from './stateStore';
-    import { doitOkLabel } from './contentStore';
 
 
     let showWelcome, showOutro, showMarkerInfo;
@@ -175,8 +174,27 @@
 
 
 <style>
+    header {
+        width: 100vw;
+        height: 110px;
+
+        margin-bottom: 63px;
+
+        background: transparent linear-gradient(2deg, var(--theme-color) 0%, #293441 31%, #242428 72%, #231F20 98%) 0% 0% no-repeat padding-box;
+    }
+
+    main {
+        max-width: 100vw;
+        overflow-x: hidden;
+
+        margin: 0 48px 90px;
+
+        font: normal 18px/24px Trebuchet, Arial, sans-serif;
+        color: var(--theme-color);
+    }
+
     aside {
-        position: absolute;
+        position: fixed;
         top: 0;
         left: 0;
         width: 100vw;
@@ -189,30 +207,36 @@
         background-color: rgba(128 128 128 / 60%)
     }
 
-    footer {
-        display: flex;
-        justify-content: center;
-
-        margin-top: var(--footer-top-margin);
-    }
-
     #frame {
-        width: calc(100vw - 2 * var(--ui-margin));
-
+        width: calc(100vw - 3 * var(--ui-margin));
         max-width: var(--ui-max-width);
         max-height: var(--ui-max-height);
 
-        border-radius: var(--ui-radius);
-        border: 1px solid black;
-        box-shadow: var(--ui-shadow);
+        text-align: center;
 
-        padding: var(--padding-text);
+        box-shadow: 0 3px 6px #00000029;
+        border: 2px solid var(--theme-color);
+        padding: var(--ui-margin);
 
         background-color: white;
+    }
+
+    #logo {
+        position: absolute;
+        top: 35px;
+        left: 204px;
+        width: 158px;
+        height: 40px;
+        opacity: 1;
     }
 </style>
 
 
+<header>
+    <img id="logo" src="/media/OARC_Logo_without_BG.png" />
+</header>
+
+<main>
 {#if !isHeadless}
     {#if shouldShowDashboard && $arIsAvailable}
         <Dashboard bind:this={dashboard} on:okClicked={startAr} />
@@ -242,3 +266,4 @@
     <h1>Headless Mode</h1>
     <pre>{JSON.stringify(currentSharedValues, null, 2)}</pre>
 {/if}
+</main>

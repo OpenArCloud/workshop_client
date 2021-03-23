@@ -24,6 +24,11 @@
     .spinner {
         height: 50px;
     }
+
+
+    button {
+        margin-bottom: 27px;
+    }
 </style>
 
 

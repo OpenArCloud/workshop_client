@@ -13,19 +13,26 @@ import { readable } from 'svelte/store';
 
 
 // Greets first time users with som background info about the app and its usage
+export const introGreeting = readable('', (set) =>{
+    set('Welcome');
+    return () => set('');
+})
+
 export const intro = readable('', (set) => {
     set(`
-    <h1>Welcome</h1>
-    <div>Message, shown only the first time the app is started.</div>
+        <div>Message, shown only the first time the app is started.</div>
     `);
 
     return () => set('');
 });
 
 // User returns from experience
+export const outroGreeting = readable('', (set) => {
+    set('Howdy');
+    return () => set('');
+})
 export const outro = readable('', (set) => {
     set(`
-        <h1>Howdy</h1>
         <div>How has it been? Feel free to start again</div>
     `);
 
@@ -33,8 +40,12 @@ export const outro = readable('', (set) => {
 });
 
 // Repeat user. General greeting with thanks for coming back
+export const infoGreeting = readable('', (set) => {
+    set('Welcome back')
+    return () => set('');
+})
 export const info = readable('', (set) => {
-    set(`<h1>Welcome back</h1>`);
+    set(`<p>Glad to see you again</p>`);
     return () => set('');
 });
 
@@ -51,13 +62,13 @@ export const markerInfo = readable('', (set) => {
 
 // The device the app is running on is able to start an AR session
 export const arOkMessage = readable('', (set) => {
-    set(`<h2>AR is available</h2>`);
+    set(`<h4>AR is available</h4>`);
     return () => set('');
 });
 
 // The device the app is running on is unable to start an AR session with the given requirements
 export const noArMessage = readable('', (set) => {
-    set(`<h2>Sorry Dave, I can't do that.</h2>`);
+    set(`<h4>Sorry Dave, I can't do that.</h4>`);
     return () => set('');
 });
 

@@ -408,25 +408,24 @@
 
 
 <style>
-    canvas {
-        width: 100vw;
-        height: 100vh;
-    }
-
     aside footer {
         position: absolute;
         bottom: 0;
 
         margin: var(--ui-margin);
-        padding: var(--ui-margin);
+        padding: 0 27px;
 
         width: calc(100vw - 4 * var(--ui-margin));
 
         border: 1px solid black;
         border-radius: var(--ui-radius);
-        background-color: white;
-
+        font-size: 16px;
+        font-weight: bold;
         text-align: center;
+
+        background: #FFFFFF 0% 0% no-repeat padding-box;
+
+        opacity: 0.7;
     }
 
     #trackinglostindicator {
