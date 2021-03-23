@@ -4,18 +4,18 @@
 -->
 
 <!--
-    Content of the marker intro overlay.
+    Content of the outro overlay.
 -->
 
 <script>
     import { createEventDispatcher } from 'svelte';
 
-    import { markerInfo, startedOkLabel } from "@src/contentStore";
+    import { outro, doitOkLabel } from '@src/contentStore';
+
 
     // Used to dispatch events to parent
     const dispatch = createEventDispatcher();
 </script>
-
 
 <style>
     button {
@@ -26,8 +26,8 @@
 </style>
 
 
-<div>{@html $markerInfo}</div>
+<div>{@html $outro}</div>
 
 <footer>
-        <button on:click={() => dispatch('okAction')}>{$startedOkLabel}</button>
+    <button on:click={() => dispatch('okAction')}>{$doitOkLabel}</button>
 </footer>

@@ -25,8 +25,8 @@
     import { calculateDistance, fakeLocationResult, calculateRotation } from '@core/locationTools';
 
     import { initCameraCaptureScene, drawCameraCaptureScene, createImageFromTexture } from '@core/cameraCapture';
-    import ArCloudOverlay from "./dom-overlays/ArCloudOverlay.svelte";
-    import MarkerOverlay from "./dom-overlays/MarkerOverlay.svelte";
+    import ArCloudOverlay from "@components/dom-overlays/ArCloudOverlay.svelte";
+    import ArMarkerOverlay from "@components/dom-overlays/ArMarkerOverlay.svelte";
 
     export let activeArMode;
 
@@ -347,7 +347,7 @@
                     .then(data => {
                         isLocalizing = false;
                         isLocalized = true;
-                        wait(1000).then(showFooter = false);
+                        wait(1000).then(() => showFooter = false);
 
                         if ('scrs' in data) {
                             resolve([data.geopose.pose, data.scrs]);
@@ -445,23 +445,24 @@
 
 
 <canvas id='application' bind:this={canvas}></canvas>
+
 <aside bind:this={overlay} on:beforexrselect={(event) => event.preventDefault()}>
     <!--  Space for UI elements  -->
-    {#if showFooter || hasLostTracking}
+    {#if showFooter}
         <footer>
             {#if activeArMode === ARMODES.oscp}
                 <ArCloudOverlay hasPose="{firstPoseReceived}" isLocalizing="{isLocalizing}" isLocalized="{isLocalized}"
                         on:startLocalisation={startLocalisation} />
             {:else if activeArMode === ARMODES.marker}
-                <MarkerOverlay />
+                <ArMarkerOverlay />
             {:else}
                 <p>Somethings wrong...</p>
                 <p>Apologies.</p>
             {/if}
-
-            {#if hasLostTracking}
-                <div id="trackinglostindicator"></div>
-            {/if}
         </footer>
+    {/if}
+
+    {#if hasLostTracking}
+        <div id="trackinglostindicator"></div>
     {/if}
 </aside>

@@ -7,22 +7,24 @@
     Handles and coordinates all global aspects of the app.
 -->
 <script>
-    import { onMount, tick } from "svelte";
+    import {onMount, tick} from "svelte";
 
-    import { getServicesAtLocation } from 'ssd-access';
+    import {getServicesAtLocation} from 'ssd-access';
 
-    import { ARMODES } from '@src/core/common'
-    import { getCurrentLocation } from '@src/core/locationTools'
+    import {ARMODES} from '@src/core/common'
+    import {getCurrentLocation} from '@src/core/locationTools'
     import * as P2p from '@src/core/p2pnetwork'
 
     import Dashboard from '@components/Dashboard.svelte';
-    import Overlay from '@components/Overlay.svelte'
     import Viewer from '@components/Viewer.svelte';
+
+    import WelcomeOverlay from "@components/dom-overlays/WelcomeOverlay.svelte";
+    import OutroOverlay from "@components/dom-overlays/OutroOverlay.svelte";
+    import MarkerOverlay from "@components/dom-overlays/MarkerOverlay.svelte";
 
     import { arIsAvailable, showDashboard, hasIntroSeen, initialLocation, ssr, arMode, allowP2pNetwork,
         availableP2pServices } from './stateStore';
-    import { info, intro, arOkMessage, noArMessage, outro, startedOkLabel, doitOkLabel,
-        markerInfo} from './contentStore';
+    import { doitOkLabel } from './contentStore';
 
 
     let showWelcome, showOutro, showMarkerInfo;
@@ -172,27 +174,64 @@
 </script>
 
 
+<style>
+    aside {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        background-color: rgba(128 128 128 / 60%)
+    }
+
+    footer {
+        display: flex;
+        justify-content: center;
+
+        margin-top: var(--footer-top-margin);
+    }
+
+    #frame {
+        width: calc(100vw - 2 * var(--ui-margin));
+
+        max-width: var(--ui-max-width);
+        max-height: var(--ui-max-height);
+
+        border-radius: var(--ui-radius);
+        border: 1px solid black;
+        box-shadow: var(--ui-shadow);
+
+        padding: var(--padding-text);
+
+        background-color: white;
+    }
+</style>
+
+
 {#if !isHeadless}
-    <!-- TODO: Replace generic Overlay components with specific content components -->
     {#if shouldShowDashboard && $arIsAvailable}
         <Dashboard bind:this={dashboard} on:okClicked={startAr} />
     {/if}
 
-    {#if showWelcome}
-        <Overlay withOkFooter="{$arIsAvailable && activeArMode !== ARMODES.auto}" okButtonLabel="{$startedOkLabel}" on:okAction={closeIntro}>
-            <div slot="content">{@html $hasIntroSeen ? $info : $intro}</div>
-            <div slot="message">{@html $arIsAvailable ? $arOkMessage : $noArMessage}</div>
-        </Overlay>
+    {#if showWelcome || showOutro || shouldShowMarkerInfo }
+    <aside>
+        <div id="frame">
+        {#if showWelcome}
+            <WelcomeOverlay withOkFooter="{$arIsAvailable && activeArMode !== ARMODES.auto}" on:okAction={closeIntro} />
 
-    {:else if showOutro}
-        <Overlay withOkFooter="{true}" okButtonLabel="{$doitOkLabel}" on:okAction={closeIntro}>
-            <div slot="content">{@html $outro}</div>
-        </Overlay>
+        {:else if showOutro}
+            <OutroOverlay on:okAction={closeIntro} />
 
-    {:else if shouldShowMarkerInfo}
-        <Overlay withOkFooter="{true}" okButtonLabel="{$doitOkLabel}" on:okAction={closeMarker}>
-            <div slot="content">{@html $markerInfo}</div>
-        </Overlay>
+        {:else if shouldShowMarkerInfo}
+            <MarkerOverlay on:okAction={closeMarker} />
+        {/if}
+        </div>
+    </aside>
 
     {:else if showAr}
         <Viewer bind:this={viewer} activeArMode="{activeArMode}"
