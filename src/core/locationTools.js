@@ -305,12 +305,14 @@ export function calculateRotation(localisationQuaternion, localQuaternion) {
     const local = quat.fromValues(localQuaternion.x, localQuaternion.y, localQuaternion.z, localQuaternion.w);
 
     const localInv = quat.create();
-    quat.invert(localInv , local);
+    quat.invert(localInv, local);
 
-    const result = quat.create();
-    quat.multiply(result , global, local);
+    const diff = quat.create();
+    quat.multiply(diff, global, localInv);
 
-    return result;
+    const norm = quat.create();
+    quat.normalize(norm, diff);
+    return norm;
 }
 
 
