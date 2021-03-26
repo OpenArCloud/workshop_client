@@ -7,9 +7,9 @@
     Initializes and runs the AR session. Configuration will be according the data provided by the parent.
 -->
 <script>
-    import { createEventDispatcher } from 'svelte';
+    import { createEventDispatcher, onDestroy } from 'svelte';
 
-    import '@thirdparty/playcanvas.dbg.js';
+    import '@thirdparty/playcanvas.min.js';
     import {v4 as uuidv4} from 'uuid';
 
     import { sendRequest, objectEndpoint, validateRequest } from 'gpp-access';
@@ -20,7 +20,7 @@
     import { initialLocation, availableContentServices, currentMarkerImage,
         currentMarkerImageWidth, recentLocalisation,
         debug_appendCameraImage, debug_showLocationAxis, debug_useLocalServerResponse} from '@src/stateStore';
-    import { wait, ARMODES, debounce } from "@core/common";
+    import { wait, ARMODES, debounce, loadAdditionalScript, removeAdditionalScripts } from "@core/common";
     import { createModel, createPlaceholder, addAxes } from '@core/modelTemplates';
     import { calculateDistance, fakeLocationResult, calculateRotation } from '@core/locationTools';
 
@@ -47,6 +47,8 @@
     let trackedImage, trackedImageObject;
     let poseFoundHeartbeat = null;
 
+    let loadPlaycanvasScene = false;
+
     // TODO: Setup event target array, based on info received from SCD
 
 
@@ -69,9 +71,10 @@
     export function startAr() {
         showFooter = true;
 
-        app = new pc.Application(canvas, {
+        app = window.app = new pc.Application(canvas, {
             mouse: new pc.Mouse(canvas),
             touch: new pc.TouchDevice(canvas),
+            elementInput: new pc.ElementInput(canvas),
             graphicsDeviceOptions: {alpha: true}
         });
 
@@ -387,9 +390,25 @@
             // Augmented City special path for the GeoPose. Should be just 'record.content.geopose'
             const objectPose = record.content.geopose.pose;
 
-            // This is difficult to generalize, because there are no types defined yet.
+            // Difficult to generalize, because there are no types defined yet.
             if (record.content.type === 'placeholder') {
-                const placeholder = createPlaceholder(record.content.keywords);
+                let placeholder;
+
+                if (record.content.custom_data.sticker_type === 'other' &&
+                        record.content.custom_data.sticker_subtype === 'Playcanvas') {
+                    const path = record.content.custom_data.path;
+                    placeholder = new pc.Entity();
+                    placeholder.name = 'playcanvasparent';
+
+                    loadAdditionalScript(`${path}__settings__.js`, () => {
+                        loadAdditionalScript(`${path}__start__.js`, () => {
+                            // TODO: Find scene and add it to to placeholder
+                        });
+                    });
+                } else {
+                    placeholder = createPlaceholder(record.content.keywords);
+                }
+
                 container.addChild(placeholder);
 
                 const contentPosition = calculateDistance(globalPose, objectPose);
@@ -399,11 +418,13 @@
 
                 const rotation = calculateRotation(globalPose.quaternion, localPose.transform.orientation);
                 container.setRotation(rotation[0], rotation[1], rotation[2], rotation[3]);
-
-                console.log("placeholder at: " + contentPosition.x + ", " + contentPosition.y + ", " +  contentPosition.z);
             }
         })
     }
+
+    onDestroy(() => {
+        removeAdditionalScripts()
+    })
 </script>
 
 
