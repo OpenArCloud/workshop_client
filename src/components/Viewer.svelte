@@ -37,6 +37,7 @@
     const dispatch = createEventDispatcher();
 
     let canvas, overlay;
+    $: window.canvas = canvas;
 
     let app;
 
@@ -381,6 +382,8 @@
      */
     function placeContent(localPose, globalPose, scr) {
         const localPosition = localPose.transform.position;
+
+        console.log('Number of content items received: ', scr.length);
 
         scr.forEach(record => {
             const container = new pc.Entity();

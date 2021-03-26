@@ -19,6 +19,8 @@
                         if (err) {
                             console.error(err);
                         }
+
+                        app.start();
                     });
                 });
             });

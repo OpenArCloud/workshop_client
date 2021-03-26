@@ -54,5 +54,5 @@ Cube.prototype.initialize = function () {
 }
 
 Cube.prototype.update = function (t) {
-    this.entity.rotate(0, 10 * t, 0);
+    this.entity.rotate(0, this.rotateSpeed * t, 0);
 };
