@@ -1,3 +1,6 @@
+Archived this repository, as the workshop is over. Further development will be done in https://github.com/OpenArCloud/sparcl
+
+
 # WebXR client for IEEE workshop
 
 This application started as a technology preview for the IEEE VR 2021 workshop from
